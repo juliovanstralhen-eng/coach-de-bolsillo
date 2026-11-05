@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.2";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.3";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -2121,6 +2121,15 @@ function render(){
   if (!S.profile) return renderWelcome();
   ({hoy:renderHoy, plan:renderPlan, ejercicios:renderLib, progreso:renderProg, nutricion:renderNut}[tab] || renderHoy)();
 }
+function bindRestore(input, box){
+  input && input.addEventListener("change", async e => {
+    const f = e.target.files[0]; if (!f) return; let obj = null; try { obj = JSON.parse(await f.text()); } catch(err){}
+    if (!obj || !obj.S || !obj.S.profile) { box.innerHTML = `<p class="note bad small">Ese archivo no es una copia de Gymnós.</p>`; return; }
+    box.innerHTML = `<div class="note warn stack" style="gap:8px"><span>La copia del ${esc(obj.exported || "")} tiene ${obj.S.logs?.length || 0} sesiones${S.profile ? ". Reemplazará tus datos actuales" : ""}.</span><div class="row"><button class="btn small" id="impNo">Cancelar</button><button class="btn small primary" id="impYes">Restaurar</button></div></div>`;
+    box.querySelector("#impNo").onclick = () => box.innerHTML = "";
+    box.querySelector("#impYes").onclick = async () => { S = Object.assign(freshState(), obj.S); PHOTOS = obj.photos || []; savePhotosLocal(); S.updatedAt = Date.now(); lsSet(LS_KEY, S); await Cloud.pushAll(); for (const ph of PHOTOS) Cloud.pushPhoto(ph); toast("Copia restaurada"); go("hoy"); };
+  });
+}
 function renderWelcome(){
   $("#view").innerHTML = `<div class="stack">
     <div class="row" style="gap:12px;flex-wrap:nowrap"><svg class="logo big" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><path d="M45.6 18.9A19 19 0 1 0 51 34.5" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round"/><path d="M30 32.5h19" stroke="var(--go)" stroke-width="3" stroke-linecap="round"/><rect x="28.6" y="28" width="3" height="9" rx="1.3" fill="var(--go)"/><rect x="32.3" y="25" width="3.6" height="15" rx="1.5" fill="var(--go)"/><rect x="43.4" y="25" width="3.6" height="15" rx="1.5" fill="var(--go)"/><rect x="47.7" y="28" width="3" height="9" rx="1.3" fill="var(--go)"/></svg><div><div class="eyebrow">Gymnós · tu coach en el bolsillo</div><div class="small muted">Entrenador y nutricionista personal, sin mensualidad</div></div></div>
@@ -2136,8 +2145,10 @@ function renderWelcome(){
       <li><b>Gratis y sin internet:</b> funciona en el gimnasio aunque no haya señal.</li>
     </ul>
     <button class="btn primary block big" id="startOb">Crear mi plan</button>
+    <label class="btn ghost block">¿Ya usabas Gymnós? Restaurar una copia<input type="file" id="impJsonW" accept=".json,application/json" hidden></label><div id="impBoxW"></div>
     <p class="small muted">Esta app educa y acompaña; no reemplaza la valoración de un profesional de salud.</p></div>`;
   $("#startOb").addEventListener("click", () => startOnboarding(false));
+  bindRestore($("#impJsonW"), $("#impBoxW"));
   startAnim($("#wAnim"), EXI.sq_goblet, $("#wPhase"));
 }
 function weekStart(d){ const x = new Date(d); const day = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - day); return x.toISOString().slice(0, 10); }
@@ -2364,14 +2375,7 @@ function renderPlan(){
   $("#resetSw").addEventListener("click", () => { S.profile.swaps = {}; save(); renderPlan(); });
   $("#expJson").addEventListener("click", () => saveFile(`gymnos-${todayISO()}.json`, JSON.stringify({app:"coach-de-bolsillo", v:3, exported:todayISO(), S, photos:PHOTOS}, null, 1)));
   $("#expCsv").addEventListener("click", () => { const rows = [["fecha","sesion","ejercicio","serie","kg","reps","rir"]]; S.logs.forEach(s => s.entries.forEach(e => e.sets.forEach((x, k) => rows.push([s.date, s.day, EXI[e.id]?.n || e.id, k + 1, x.kg ?? "", x.reps, x.rir ?? ""])))); saveFile(`sesiones-${todayISO()}.csv`, rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")); });
-  $("#impJson").addEventListener("change", async e => {
-    const f = e.target.files[0]; if (!f) return; let obj = null; try { obj = JSON.parse(await f.text()); } catch(err){}
-    const box = $("#impBox");
-    if (!obj || !obj.S || !obj.S.profile) { box.innerHTML = `<p class="note bad small">Ese archivo no es una copia de Gymnós.</p>`; return; }
-    box.innerHTML = `<div class="note warn stack" style="gap:8px"><span>La copia del ${esc(obj.exported || "")} tiene ${obj.S.logs?.length || 0} sesiones. Reemplazará tus datos actuales.</span><div class="row"><button class="btn small" id="impNo">Cancelar</button><button class="btn small primary" id="impYes">Restaurar</button></div></div>`;
-    $("#impNo").onclick = () => box.innerHTML = "";
-    $("#impYes").onclick = async () => { S = Object.assign(freshState(), obj.S); PHOTOS = obj.photos || []; savePhotosLocal(); S.updatedAt = Date.now(); lsSet(LS_KEY, S); await Cloud.pushAll(); for (const ph of PHOTOS) Cloud.pushPhoto(ph); toast("Copia restaurada"); go("hoy"); };
-  });
+  bindRestore($("#impJson"), $("#impBox"));
   $("#wipe").addEventListener("click", () => {
     $("#wipeBox").innerHTML = `<div class="note bad" style="margin-top:10px"><p style="margin-bottom:10px">Se borrarán tu perfil, sesiones, medidas, fotos y recetas. No se puede deshacer.</p><div class="row"><button class="btn small" id="wNo">Cancelar</button><button class="btn small" id="wYes" style="background:var(--bad);color:var(--surface);border-color:var(--bad)">Borrar todo</button></div></div>`;
     $("#wNo").addEventListener("click", () => $("#wipeBox").innerHTML = "");
@@ -3131,9 +3135,22 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); PWA.de
 window.addEventListener("appinstalled", () => { PWA.deferred = null; toast("App instalada"); });
 window.addEventListener("online", () => setSync()); window.addEventListener("offline", () => setSync());
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").then(reg => {
-    reg.addEventListener("updatefound", () => { const w = reg.installing; w && w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) toast("Nueva versión lista: cierra y abre la app"); }); });
+  /* Actualizaciones: el iPhone retoma la app suspendida en vez de recargarla, así que al volver a la app
+     se busca una versión nueva y, si la hay, se aplica sola (salvo en plena rutina). */
+  const busy = () => (typeof WP !== "undefined" && WP) || (typeof ob !== "undefined" && ob);
+  let pendingReload = false;
+  const applyUpdate = () => { if (busy()) { pendingReload = true; return; } location.reload(); };
+  navigator.serviceWorker.register("./sw.js", {updateViaCache: "none"}).then(reg => {
+    const check = async () => {
+      try { await reg.update(); } catch(e) {}
+      try { const r = await fetch("./version.json?t=" + Date.now(), {cache: "no-store"}); const v = (await r.json()).v; if (v && v !== window.APP_VERSION) { let tried = ""; try { tried = sessionStorage.getItem("gy-upd") || ""; } catch(e) {} if (tried === v) return; try { sessionStorage.setItem("gy-upd", v); } catch(e) {} try { await reg.update(); } catch(e) {} setTimeout(applyUpdate, 1200); } } catch(e) {}
+    };
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (pendingReload && !busy()) location.reload(); else check(); } });
+    setInterval(() => { if (pendingReload && !busy()) location.reload(); }, 5000);
+    check();
   }).catch(() => {});
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (reloaded) return; reloaded = true; applyUpdate(); });
 }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e) {}
 </script>
