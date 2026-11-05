@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.6";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.7";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -1271,6 +1271,74 @@ function parseLabel(txt){
   const r1 = v => v == null ? null : Math.round(v * 10) / 10;
   return {base, portion, k: k == null ? null : Math.round(k), p: r1(best.p), c: r1(best.c), f: r1(best.f)};
 }
+/* ---- Comida escrita en texto libre: "yogur griego, almendras, arándanos y miel" ---- */
+Object.assign(FOOD_EXTRA, {
+  "Arándanos":{k:57,p:.7,c:14.5,f:.3}, "Moras":{k:43,p:1.4,c:9.6,f:.5}, "Frambuesas":{k:52,p:1.2,c:12,f:.7}, "Kiwi":{k:61,p:1.1,c:15,f:.5,u:[75,"unidad"]},
+  "Pera":{k:57,p:.4,c:15,f:.1,u:[180,"unidad"]}, "Sandía":{k:30,p:.6,c:7.6,f:.2}, "Melón":{k:34,p:.8,c:8,f:.2}, "Uchuvas":{k:53,p:1.9,c:11,f:.7},
+  "Chía":{k:486,p:17,c:42,f:31,u:[12,"cda"]}, "Linaza":{k:534,p:18,c:29,f:42,u:[10,"cda"]}, "Clara de huevo":{k:52,p:11,c:.7,f:.2,u:[33,"clara"]},
+  "Croissant":{k:406,p:8,c:46,f:21,u:[60,"unidad"]}, "Galletas María":{k:440,p:7,c:73,f:13,u:[7,"galleta"]}, "Pan de bono":{k:330,p:9,c:40,f:15,u:[60,"unidad"]},
+  "Té":{k:1,p:0,c:.3,f:0,u:[240,"taza"]}, "Ensalada verde":{k:20,p:1.2,c:3.5,f:.2}, "Tostadas de pan":{k:400,p:11,c:75,f:6,u:[10,"tostada"]}, "Mermelada":{k:250,p:.4,c:62,f:.1,u:[20,"cda"]},
+  "Chocolate caliente":{k:77,p:3.5,c:10,f:2.5,u:[240,"taza"]}, "Mantequilla de almendras":{k:614,p:21,c:19,f:56,u:[16,"cda"]}, "Hummus":{k:166,p:8,c:14,f:10,u:[30,"cda"]}, "Pan árabe":{k:275,p:9,c:56,f:1.2,u:[60,"unidad"]}, "Bebida de avena":{k:46,p:1,c:7,f:1.5,u:[240,"vaso"]}, "Queso parmesano":{k:431,p:38,c:4,f:29,u:[5,"cda"]}
+});
+/* Porción típica (g) cuando no se dice la cantidad */
+const DEF_G = {"Yogur griego natural":170, "Yogur griego 0 %":170, "Yogur natural":170, "Leche":240, "Leche descremada":240, "Avena":40, "Granola":30, "Almendras":20, "Maní tostado":20, "Nueces":20, "Miel":15, "Azúcar":8,
+  "Arándanos":60, "Fresas":100, "Moras":70, "Frambuesas":60, "Uchuvas":60, "Chía":12, "Linaza":10, "Huevo":100, "Clara de huevo":99, "Pan blanco":50, "Pan integral":60, "Arroz":150, "Arroz integral":150, "Quinoa":150, "Pasta":180,
+  "Papa":150, "Yuca":150, "Plátano":120, "Batata":150, "Pollo (pechuga)":120, "Carne de res magra":120, "Carne molida magra":120, "Lomo de cerdo":120, "Pescado blanco":150, "Salmón":120, "Atún en lata":120, "Sardinas en lata":90,
+  "Fríjol":150, "Lenteja":150, "Garbanzo":150, "Tofu firme":120, "Queso campesino":40, "Queso mozzarella":30, "Queso crema":20, "Queso parmesano":10, "Aceite":10, "Mantequilla":10, "Mayonesa":15, "Mantequilla de maní":16, "Aguacate":50,
+  "Café negro":240, "Té":240, "Ensalada verde":100, "Tostadas de pan":20, "Mermelada":20, "Chocolate caliente":240, "Hummus":40, "Jugo de naranja":250, "Gaseosa":350, "Cerveza":330, "Proteína en polvo":30, "Chocolate oscuro 70 %":20};
+const SYN = {yogurt:"yogur", yoghurt:"yogur", yogures:"yogur", blueberries:"arandanos", berries:"moras", frutos:"moras", nuez:"nueces", huevito:"huevo", huevitos:"huevo", banana:"banano", guineo:"banano", cambur:"banano",
+  palta:"aguacate", frutilla:"fresas", frutillas:"fresas", porotos:"frijol", poroto:"frijol", jamon:"jamon de pavo", whey:"proteina en polvo",
+  tinto:"cafe negro", ensalada:"ensalada verde", tostada:"tostadas de pan", tostadas:"tostadas de pan", pandebono:"pan de bono", chocolate:"chocolate caliente", jalea:"mermelada", cacahuate:"mani", cacahuates:"mani", tortillas:"tortilla de maiz", quinua:"quinoa", camote:"batata", boniato:"batata"};
+const STOP = new Set(["de","del","la","el","los","las","con","y","e","al","a","en","mi","un","una","uno","unos","unas","poco","poquito","porcion","algo","mas","sin","natural","magra","magro"]);
+const NUMW = {un:1, una:1, uno:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, media:.5, medio:.5, mitad:.5};
+const nrmT = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const stem = w => w.length > 4 && w.endsWith("es") && !/[aeiou]es$/.test(w.slice(-3)) ? w.slice(0, -2) : w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w;
+const PREF = {"Pan blanco":.02, "Queso campesino":.02, "Yogur natural":.01, "Arroz":.02, "Leche":.02, "Carne de res magra":.02, "Huevo":.02, "Pollo (pechuga)":.02};
+function matchFood(chunk, db){
+  let t = " " + nrmT(chunk).replace(/[^a-z0-9% ]/g, " ") + " ";
+  Object.entries(SYN).forEach(([a, b]) => { if (a === "chocolate" && / chocolate (oscuro|negro|amargo|\d)/.test(t)) return; t = t.replace(new RegExp(` ${a} `, "g"), ` ${b} `); });
+  const words = t.trim().split(/\s+/).filter(w => w && !STOP.has(w) && !/^\d/.test(w)), ws = new Set(words.map(stem));
+  if (!ws.size) return null;
+  let best = null;
+  for (const [n, f] of Object.entries(db)) {
+    const toks = nrmT(n).replace(/[^a-z0-9% ]/g, " ").split(/\s+/).filter(w => w && !STOP.has(w) && w !== "%");
+    if (!toks.length || !ws.has(stem(toks[0]))) continue;
+    const hit = toks.filter(w => ws.has(stem(w))).length, score = hit / toks.length + hit * .05 + (PREF[n] || 0) + (f.mine ? .03 : 0);
+    if (!best || score > best.score) best = {n, f, score};
+  }
+  return best;
+}
+function gramsFor(chunk, n, f){
+  const t = " " + nrmT(chunk).replace(/,/g, ".") + " ";
+  let m = t.match(/(\d+(?:\.\d+)?)\s*(kg|kilos?|g|gr|grs|gramos?|ml|mililitros?)\b/);
+  if (m) return +m[1] * (/^k/.test(m[2]) ? 1000 : 1);
+  m = t.match(/(\d+(?:\.\d+)?|\b(?:un|una|uno|dos|tres|cuatro|cinco|seis|media|medio)\b)\s*(cucharaditas?|cditas?|cucharadas?|cdas?|tazas?|vasos?|punados?|unidades?|tajadas?|rebanadas?|potes?|latas?|scoops?|porciones?|onzas?|oz)?/);
+  const def = DEF_G[n] || (f.u ? f.u[0] : ({prot:120, leg:150, dairy:150, carb:150, veg:80, fruit:120, fat:30, oil:10}[f.t] || 100));
+  if (!m) return def;
+  const q = NUMW[m[1]] ?? +m[1], u = m[2] || "", nn = nrmT(n);
+  if (/^cucharadi|^cdita/.test(u)) return q * (/miel/.test(nn) ? 7 : 5);
+  if (/^cuchar|^cda/.test(u)) return q * (/miel/.test(nn) ? 21 : /aceite/.test(nn) ? 14 : /mani|chia|azucar/.test(nn) ? 13 : 15);
+  if (/^taza/.test(u)) return q * (/avena|granola|cereal/.test(nn) ? 80 : /arroz|quinoa|pasta|frijol|lenteja|garbanzo/.test(nn) ? 160 : /leche|cafe|jugo|te$/.test(nn) ? 240 : /yogur/.test(nn) ? 245 : 150);
+  if (/^vaso/.test(u)) return q * 240;
+  if (/^punad/.test(u)) return q * (/almendra|mani|nuec/.test(nn) ? 28 : 40);
+  if (/^onza|^oz/.test(u)) return q * 28;
+  if (/^(pote|lata|scoop|porcion|unidad|tajada|rebanada)/.test(u)) return q * (f.u ? f.u[0] : def);
+  if (!u && q > 20) return q;
+  return q * (f.u ? f.u[0] : def);
+}
+function parseMeal(text){
+  const db = foodDB(), lines = [], unknown = [];
+  const chunks = text.replace(/\n/g, ",").split(/,|;|\+|\s+y\s+|\s+e\s+|\s+con\s+|\s+mas\s+|\s+más\s+/i).map(x => x.trim()).filter(Boolean);
+  for (const ch of chunks) {
+    const m = matchFood(ch, db);
+    if (!m || m.score < .5) { if (nrmT(ch).replace(/[^a-z]/g, "").length > 2) unknown.push(ch); continue; }
+    const g = Math.round(gramsFor(ch, m.n, m.f)), b = {k: m.f.k, p: m.f.p, c: m.f.c, f: m.f.f};
+    lines.push({name: m.n, g, b, ...per(b, g), est: !/\d|\b(un|una|dos|tres|media|medio)\b/i.test(ch)});
+  }
+  return {lines, unknown};
+}
+const withBase = l => l.b ? l : Object.assign(l, {b: l.g ? {k: l.k * 100 / l.g, p: l.p * 100 / l.g, c: l.c * 100 / l.g, f: l.f * 100 / l.g} : {k:0, p:0, c:0, f:0}});
+async function aiText(){ try { if (!window.claude || !claude.use) return null; return await claude.use("sample"); } catch(e){ return null; } }
 /* ---- Hoja para agregar comida ---- */
 let FD = null;
 function openFood(o){ FD = Object.assign({mode: "menu", meal: nowMeal(), lines: [], photo: null}, o); renderFood(); }
@@ -1286,7 +1354,7 @@ function renderFood(){
       <div class="stack" style="gap:8px">
         <label class="btn big block" style="justify-content:flex-start;gap:12px">${photoIn("fdLabelIn")}<span><b>Foto de la etiqueta</b><br><span class="small muted" style="font-weight:400">Productos empacados: lee la tabla nutricional</span></span></label>
         <label class="btn big block" style="justify-content:flex-start;gap:12px">${photoIn("fdPlateIn")}<span><b>Foto del plato</b><br><span class="small muted" style="font-weight:400">Estima los alimentos y las porciones</span></span></label>
-        <button class="btn big block" id="fdManual" style="justify-content:flex-start"><span><b>Escribir los ingredientes</b><br><span class="small muted" style="font-weight:400">Busca alimentos y di cuánto comiste</span></span></button>
+        <button class="btn big block" id="fdManual" style="justify-content:flex-start"><span><b>Escribir lo que comí</b><br><span class="small muted" style="font-weight:400">Ej.: "yogur griego, almendras y miel": calcula solo</span></span></button>
       </div>
       ${rec.length ? `<div><div class="eyebrow" style="margin-bottom:6px">Repetir algo reciente</div><div class="opts">${rec.map((e, i) => `<button class="btn small" data-rec="${i}">${esc(e.name)} · ${fmt(e.g, 0)} g</button>`).join("")}</div></div>` : ""}</div>`;
     openSheet(html, sh => {
@@ -1340,31 +1408,56 @@ function renderFood(){
     return;
   }
   if (FD.mode === "manual") {
-    const db = foodDB(), tot = FD.lines.reduce((a, l) => ({k: a.k + l.k, p: a.p + l.p, c: a.c + l.c, f: a.f + l.f}), {k:0, p:0, c:0, f:0});
-    html = hdr(FD.plateMode ? "Arma tu plato" : "Escribe lo que comiste") + `<div class="stack">
+    const db = foodDB(); FD.lines.forEach(withBase);
+    const tot = FD.lines.reduce((a, l) => ({k: a.k + l.k, p: a.p + l.p, c: a.c + l.c, f: a.f + l.f}), {k:0, p:0, c:0, f:0});
+    html = hdr(FD.plateMode ? "Arma tu plato" : "¿Qué comiste?") + `<div class="stack">
       ${FD.photo ? `<img src="${FD.photo}" alt="Foto de tu plato" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;background:var(--sunk)">` : ""}
       ${FD.note ? `<div class="note ${FD.noteWarn ? "warn" : ""} small">${esc(FD.note)}</div>` : ""}
-      <label class="field">Busca un alimento<input id="mnQ" placeholder="Ej.: arroz, yogur griego, manzana" autocomplete="off"></label>
-      <div id="mnRes" class="stack" style="gap:6px"></div>
-      <div id="mnPick"></div>
-      ${FD.lines.length ? `<div><div class="eyebrow" style="margin-bottom:4px">Tu plato</div>${FD.lines.map((l, i) => `<div class="row between small" style="flex-wrap:nowrap;padding:5px 0;border-bottom:1px solid var(--line)"><span style="min-width:0">${esc(l.name)} · ${fmt(l.g, 0)} g <span class="muted">· ${fmt(l.k, 0)} kcal · P ${fmt(l.p, 0)} · C ${fmt(l.c, 0)} · G ${fmt(l.f, 0)}</span></span><button class="btn small ghost" data-lrm="${i}" style="min-height:30px;padding:0 10px">Quitar</button></div>`).join("")}
-        <p class="small" style="margin-top:6px"><b>Total: ${fmt(tot.k, 0)} kcal</b> · proteína ${fmt(tot.p, 0)} g · carbohidratos ${fmt(tot.c, 0)} g · grasas ${fmt(tot.f, 0)} g</p></div>` : `<p class="small muted">Agrega cada alimento con la cantidad. ¿No está en la lista? Escríbelo y usa "Agregar con mis datos".</p>`}
+      <label class="field">Escríbelo como lo dirías<textarea id="mnTxt" rows="2" placeholder="Ej.: yogur griego, almendras, arándanos y miel" style="min-height:64px">${esc(FD.txt || "")}</textarea></label>
+      <div class="row between" style="flex-wrap:nowrap;gap:8px;margin-top:-4px"><span class="small muted">Si sabes la cantidad, ponla: "2 huevos", "150 g de arroz", "1 cda de miel".</span><button class="btn small primary" id="mnCalc" style="flex:none">Calcular</button></div>
+      ${FD.unknown && FD.unknown.length ? `<div class="note warn small">No reconocí: <b>${FD.unknown.map(esc).join(", ")}</b>. Búscalo abajo con otro nombre o agrégalo con tus datos.</div>` : ""}
+      ${FD.lines.length ? `<div><div class="eyebrow" style="margin-bottom:4px">${FD.plateMode ? "Tu plato" : "Lo que comiste"}</div>${FD.lines.map((l, i) => `<div class="row between small" style="flex-wrap:nowrap;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;flex:1"><b>${esc(l.name)}</b>${l.est ? ` <span class="chip" style="padding:1px 7px;font-size:11px">porción típica</span>` : ""}<br><span class="muted">${fmt(l.k, 0)} kcal · P ${fmt(l.p, 1)} · C ${fmt(l.c, 1)} · G ${fmt(l.f, 1)}</span></span><label class="row" style="gap:4px;flex-wrap:nowrap;flex:none"><input type="number" inputmode="decimal" data-lg="${i}" value="${Math.round(l.g)}" aria-label="Gramos de ${esc(l.name)}" style="width:76px;min-height:36px;padding:4px 8px;text-align:right">g</label><button class="btn small ghost" data-lrm="${i}" aria-label="Quitar ${esc(l.name)}" style="min-height:34px;padding:0 8px;flex:none">✕</button></div>`).join("")}
+        <p class="small" style="margin-top:8px"><b>Total: ${fmt(tot.k, 0)} kcal</b> · proteína ${fmt(tot.p, 0)} g · carbohidratos ${fmt(tot.c, 0)} g · grasas ${fmt(tot.f, 0)} g</p>
+        ${FD.lines.some(l => l.est) ? `<p class="small muted">"Porción típica" es un cálculo promedio; cambia los gramos si comiste más o menos.</p>` : ""}</div>` : ""}
+      <details ${FD.lines.length ? "" : "open"}><summary class="small" style="cursor:pointer;font-weight:600">Buscar y agregar un alimento</summary><div class="stack" style="margin-top:8px">
+        <input id="mnQ" placeholder="Ej.: arroz, yogur griego, manzana" autocomplete="off" aria-label="Buscar alimento">
+        <div id="mnRes" class="stack" style="gap:6px"></div><div id="mnPick"></div></div></details>
       ${foodMealChips()}
       <div class="row"><button class="btn" id="mnBack">Atrás</button><button class="btn primary" id="mnAdd" ${FD.lines.length ? "" : "disabled"}>Agregar ${FD.lines.length ? `(${fmt(tot.k, 0)} kcal)` : ""}</button></div></div>`;
     openSheet(html, sh => {
-      const q = sh.querySelector("#mnQ"), res = sh.querySelector("#mnRes"), pickBox = sh.querySelector("#mnPick");
-      const nrm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const q = sh.querySelector("#mnQ"), res = sh.querySelector("#mnRes"), pickBox = sh.querySelector("#mnPick"), txt = sh.querySelector("#mnTxt");
+      const nrm = nrmT;
+      const calc = async () => {
+        const v = txt.value.trim(); FD.txt = v; if (!v) { txt.focus(); return; }
+        const r = parseMeal(v); FD.lines.push(...r.lines); FD.unknown = r.unknown; FD.txt = "";
+        if (r.unknown.length && !window.PWA_MODE) {
+          const ai = await aiText();
+          if (ai) {
+            const btn = sh.querySelector("#mnCalc"); btn.disabled = true; btn.textContent = "Calculando…";
+            try {
+              const j = await ai.json(`Estima los valores nutricionales de estos alimentos tal como los escribió una persona, en una porción típica para un adulto (si dice cantidad, úsala): ${r.unknown.join("; ")}. Responde SOLO con JSON: {"items":[{"nombre":"alimento en español","gramos":número,"kcal":número,"proteina_g":número,"carbohidratos_g":número,"grasa_g":número}]}`, {modelTier: "quick"});
+              const got = (j && j.items || []).filter(i => i && i.nombre && +i.gramos > 0);
+              got.forEach(i => FD.lines.push(withBase({name: i.nombre, g: +i.gramos, k: +i.kcal || 0, p: +i.proteina_g || 0, c: +i.carbohidratos_g || 0, f: +i.grasa_g || 0, est: true})));
+              if (got.length) FD.unknown = [];
+            } catch(e){}
+          }
+        }
+        FD.note = ""; renderFood();
+      };
+      sh.querySelector("#mnCalc").onclick = calc;
+      txt.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); calc(); } });
+      txt.addEventListener("input", () => FD.txt = txt.value);
+      sh.querySelectorAll("[data-lg]").forEach(inp => inp.addEventListener("change", () => { if (inp.dataset.done) return; const l = FD.lines[+inp.dataset.lg], g = parseFloat(inp.value); if (!l || !(g > 0) || g === Math.round(l.g)) return; inp.dataset.done = "1"; l.g = g; l.est = false; Object.assign(l, per(l.b, g)); setTimeout(renderFood, 0); }));
       const showPick = (name, f) => {
-        const hasU = f.u && f.u[0];
+        const hasU = f.u && f.u[0], dg = DEF_G[name] || (hasU ? f.u[0] : 100);
         pickBox.innerHTML = `<div class="card stack" style="gap:8px"><b>${esc(name)}</b><span class="small muted">Por 100 g${f.st ? " " + f.st : ""}: ${fmt(f.k, 0)} kcal · P ${fmt(f.p, 1)} · C ${fmt(f.c, 1)} · G ${fmt(f.f, 1)}</span>
-          <div class="grid2"><label class="field">Cantidad<input id="mnAmt" type="number" inputmode="decimal" value="${hasU ? 1 : 100}"></label><label class="field">Medida<select id="mnU">${hasU ? `<option value="u">${esc(plural(f.u[1], 2))} (${f.u[0]} g c/u)</option>` : ""}<option value="g">gramos</option></select></label></div>
-          <button class="btn primary small" id="mnOk" style="align-self:flex-start">Agregar al plato</button></div>`;
-        pickBox.querySelector("#mnOk").onclick = () => { const a = parseFloat(pickBox.querySelector("#mnAmt").value) || 0; if (!a) return; const g = pickBox.querySelector("#mnU").value === "u" ? a * f.u[0] : a; FD.lines.push({name, g, ...per(f, g)}); renderFood(); };
-        pickBox.querySelector("#mnAmt").focus();
+          <div class="grid2"><label class="field">Cantidad<input id="mnAmt" type="number" inputmode="decimal" value="${hasU ? 1 : dg}"></label><label class="field">Medida<select id="mnU">${hasU ? `<option value="u">${esc(plural(f.u[1], 2))} (${f.u[0]} g c/u)</option>` : ""}<option value="g">gramos</option></select></label></div>
+          <button class="btn primary small" id="mnOk" style="align-self:flex-start">Agregar</button></div>`;
+        pickBox.querySelector("#mnOk").onclick = () => { const a = parseFloat(pickBox.querySelector("#mnAmt").value) || 0; if (!a) return; const g = pickBox.querySelector("#mnU").value === "u" ? a * f.u[0] : a, b = {k: f.k, p: f.p, c: f.c, f: f.f}; FD.lines.push({name, g, b, ...per(b, g)}); renderFood(); };
       };
       const search = () => {
         const s = nrm(q.value.trim()); if (!s) { res.innerHTML = ""; return; }
-        const hits = Object.entries(db).filter(([n]) => nrm(n).includes(s)).sort((a, b) => (b[1].mine || 0) - (a[1].mine || 0) || nrm(a[0]).indexOf(s) - nrm(b[0]).indexOf(s)).slice(0, 8);
+        const hits = Object.entries(db).filter(([n]) => nrm(n).includes(s) || (matchFood(s, {[n]: db[n]}) || {}).score >= .5).sort((a, b) => (b[1].mine || 0) - (a[1].mine || 0) || nrm(a[0]).indexOf(s) - nrm(b[0]).indexOf(s)).slice(0, 8);
         res.innerHTML = hits.map(([n, f], i) => `<button class="btn small" data-hit="${i}" style="justify-content:space-between">${esc(n)}${f.mine ? " ★" : ""}<span class="muted">${fmt(f.k, 0)} kcal/100 g</span></button>`).join("") + `<button class="btn small ghost" id="mnCustom" style="justify-content:flex-start">Agregar "${esc(q.value.trim())}" con mis datos</button>`;
         res.querySelectorAll("[data-hit]").forEach(b => b.onclick = () => { const [n, f] = hits[+b.dataset.hit]; res.innerHTML = ""; showPick(n, f); });
         res.querySelector("#mnCustom").onclick = () => { FD.mode = "label"; FD.label = {name: q.value.trim(), base: "100", amt: 100}; FD.note = "Escribe los valores que conozcas (por ejemplo, de la etiqueta o del empaque)."; FD.noteWarn = false; FD.photo = null; renderFood(); };
@@ -1372,9 +1465,9 @@ function renderFood(){
       q.addEventListener("input", search);
       sh.querySelectorAll("[data-lrm]").forEach(b => b.onclick = () => { FD.lines.splice(+b.dataset.lrm, 1); renderFood(); });
       sh.querySelectorAll("input[name=fdMeal]").forEach(r => r.onchange = () => FD.meal = r.value);
-      sh.querySelector("#mnBack").onclick = () => { FD.mode = "menu"; FD.lines = []; FD.photo = null; FD.note = ""; FD.plateMode = false; renderFood(); };
+      sh.querySelector("#mnBack").onclick = () => { FD.mode = "menu"; FD.lines = []; FD.photo = null; FD.note = ""; FD.unknown = []; FD.txt = ""; FD.plateMode = false; renderFood(); };
       sh.querySelector("#mnAdd").onclick = () => { if (!FD.lines.length) return; addIntake(FD.lines.map(l => ({meal: FD.meal, name: l.name, g: l.g, k: l.k, p: l.p, c: l.c, f: l.f, src: FD.plateMode ? "plato" : "manual"}))); const n = FD.lines.length; closeSheet(); toast(`${n} ${n === 1 ? "alimento agregado" : "alimentos agregados"} a ${MEAL_N[FD.meal].toLowerCase()}`); FD.after && FD.after(); };
-      if (!FD.lines.length) setTimeout(() => q.focus(), 50);
+      if (!FD.lines.length && !FD.plateMode) setTimeout(() => txt.focus(), 50);
     });
   }
 }
