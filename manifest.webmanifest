@@ -1,0 +1,70 @@
+{
+ "name": "Coach de Bolsillo",
+ "short_name": "Coach",
+ "lang": "es-CO",
+ "description": "Entrenador personal y nutricionista: plan progresivo, rutina guiada, técnica animada, progreso y recetas.",
+ "id": "./",
+ "start_url": "./?app=1#hoy",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#ECEFEE",
+ "theme_color": "#ECEFEE",
+ "categories": [
+  "health",
+  "fitness",
+  "lifestyle"
+ ],
+ "icons": [
+  {
+   "src": "icons/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "Entrenar hoy",
+   "url": "./?app=1#hoy",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Progreso",
+   "url": "./?app=1#progreso",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Comida",
+   "url": "./?app=1#nutricion",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  }
+ ]
+}
