@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.5";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.6";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -114,8 +114,8 @@ p{margin:0}
 #splash .sp-name .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.6);min-height:42px}
 #splash .sp-go{background:#F2A516;color:#1F1300;border-color:#F2A516;font-weight:700;margin-top:6px;opacity:0;animation:spUp .5s 1.1s forwards}
 .sp-bar{height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}
-.sp-bar i{display:block;height:100%;width:0;background:rgba(255,255,255,.7);animation:spBar 12s linear forwards}
-#splash.hold .sp-bar i{animation-play-state:paused}
+.sp-bar i{display:block;height:100%;width:0;background:rgba(255,255,255,.7)}
+#splash{cursor:pointer}
 .sp-hint{font-size:12.5px;color:#CFE6E5;text-align:center;margin-top:-6px}
 @keyframes spArc{to{stroke-dashoffset:0}} @keyframes spPop{to{transform:scale(1)}} @keyframes spUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}} @keyframes spBar{to{width:100%}}
 @media (prefers-reduced-motion:reduce){.sp-logo .arc{animation:none;stroke-dashoffset:0}.sp-logo .db{animation:none;transform:none}#splash h1,.sp-line,.sp-quote,.sp-chips,.sp-go{animation:none;opacity:1}}
@@ -2902,20 +2902,24 @@ function showSplash(){
     ${d.askName ? `<form class="sp-name" id="spName"><label for="spNameIn">¿Cómo quieres que te salude?</label><div class="row" style="flex-wrap:nowrap"><input id="spNameIn" autocomplete="given-name" placeholder="Tu nombre" maxlength="30"><button class="btn small" type="submit">Guardar</button></div></form>` : ""}
     <button class="btn big block sp-go" id="spGo">${esc(d.cta)}</button><div class="sp-bar" aria-hidden="true"><i></i></div><p class="sp-hint" id="spHint">Toca la pantalla para pausar</p></div>`;
   document.body.appendChild(el);
-  /* Tiempo según lo que hay que leer: ~4 s + 0,35 s por palabra, entre 10 y 18 s */
-  const words = [d.hi, d.line, d.quote || "", ...d.chips].join(" ").split(/\s+/).length, dur = Math.max(10000, Math.min(18000, 4000 + words * 350));
-  el.querySelector(".sp-bar i").style.animationDuration = dur + "ms";
-  const close = () => { try { sessionStorage.setItem("gy-splash", "1"); } catch(e){} clearTimeout(splashT); el.classList.add("out"); setTimeout(() => el.remove(), 380); if (S.profile && tab !== "hoy" && /entren|sesión|Retomar/.test(d.cta)) go("hoy"); };
-  const arm = ms => { clearTimeout(splashT); splashT = setTimeout(close, ms); };
+  /* Tiempo según lo que hay que leer: ~4 s + 0,35 s por palabra, entre 10 y 18 s (+6 s si pedimos el nombre).
+     Tocar la pantalla pausa y vuelve a tocar reanuda; la barra muestra el tiempo que queda. */
+  const words = [d.hi, d.line, d.quote || "", ...d.chips].join(" ").split(/\s+/).length;
+  let total = Math.max(10000, Math.min(18000, 4000 + words * 350)) + (d.askName ? 6000 : 0), used = 0, since = Date.now(), paused = false, done = false;
+  const bar = el.querySelector(".sp-bar i"), hint = el.querySelector("#spHint");
+  const elapsed = () => used + (paused ? 0 : Date.now() - since);
+  const close = () => { if (done) return; done = true; try { sessionStorage.setItem("gy-splash", "1"); } catch(e){} clearTimeout(splashT); el.classList.add("out"); setTimeout(() => el.remove(), 380); if (S.profile && tab !== "hoy" && /entren|sesión|Retomar/.test(d.cta)) go("hoy"); };
+  const tick = () => { if (done) return; const e = elapsed(); bar.style.width = Math.min(100, e / total * 100) + "%"; if (e >= total) return close(); splashT = setTimeout(tick, 100); };
+  const pause = () => { if (paused || done) return; used = elapsed(); paused = true; el.classList.add("hold"); hint.textContent = "En pausa · toca la pantalla para seguir"; };
+  const resume = (minLeft = 0) => { if (done) return; if (minLeft && total - used < minLeft) total = used + minLeft; if (paused) { paused = false; since = Date.now(); } el.classList.remove("hold"); hint.textContent = "Toca la pantalla para pausar"; };
   el.querySelector("#spGo").onclick = close;
-  const pause = () => { clearTimeout(splashT); el.classList.add("hold"); el.querySelector("#spHint").textContent = "En pausa · toca el botón para continuar"; };
-  el.addEventListener("click", e => { if (!e.target.closest("form,button,input")) pause(); });
+  el.addEventListener("click", e => { if (e.target.closest("form,button,input")) return; paused ? resume(3000) : pause(); });
   const f = el.querySelector("#spName");
   if (f) {
     const inp = f.querySelector("input"); inp.addEventListener("focus", pause);
-    f.onsubmit = e => { e.preventDefault(); const v = inp.value.trim(); if (!v) return; S.profile.name = v; save(); el.querySelector("#spHi").textContent = splashData().hi; f.remove(); };
+    f.onsubmit = e => { e.preventDefault(); const v = inp.value.trim(); if (!v) { inp.focus(); return; } S.profile.name = v; save(); inp.blur(); el.querySelector("#spHi").textContent = splashData().hi; f.remove(); resume(5000); };
   }
-  arm(d.askName ? dur + 6000 : dur);
+  tick();
 }
 
 /* ============ Avisos: descanso y recordatorios ============ */
