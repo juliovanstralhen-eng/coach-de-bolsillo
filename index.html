@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.4";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.5";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -114,8 +114,9 @@ p{margin:0}
 #splash .sp-name .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.6);min-height:42px}
 #splash .sp-go{background:#F2A516;color:#1F1300;border-color:#F2A516;font-weight:700;margin-top:6px;opacity:0;animation:spUp .5s 1.1s forwards}
 .sp-bar{height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}
-.sp-bar i{display:block;height:100%;width:0;background:rgba(255,255,255,.7);animation:spBar 6.5s linear forwards}
+.sp-bar i{display:block;height:100%;width:0;background:rgba(255,255,255,.7);animation:spBar 12s linear forwards}
 #splash.hold .sp-bar i{animation-play-state:paused}
+.sp-hint{font-size:12.5px;color:#CFE6E5;text-align:center;margin-top:-6px}
 @keyframes spArc{to{stroke-dashoffset:0}} @keyframes spPop{to{transform:scale(1)}} @keyframes spUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}} @keyframes spBar{to{width:100%}}
 @media (prefers-reduced-motion:reduce){.sp-logo .arc{animation:none;stroke-dashoffset:0}.sp-logo .db{animation:none;transform:none}#splash h1,.sp-line,.sp-quote,.sp-chips,.sp-go{animation:none;opacity:1}}
 
@@ -2891,7 +2892,7 @@ function splashData(){
 const LOGO_ANIM = `<svg class="sp-logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0C5A5E"/><path class="arc" pathLength="100" d="M45.6 18.9A19 19 0 1 0 51 34.5" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round"/><g class="db"><path d="M30 32.5h19" stroke="#F2A516" stroke-width="3" stroke-linecap="round"/><rect x="28.6" y="28" width="3" height="9" rx="1.3" fill="#F2A516"/><rect x="32.3" y="25" width="3.6" height="15" rx="1.5" fill="#F2A516"/><rect x="43.4" y="25" width="3.6" height="15" rx="1.5" fill="#F2A516"/><rect x="47.7" y="28" width="3" height="9" rx="1.3" fill="#F2A516"/></g></svg>`;
 let splashT = 0;
 function showSplash(){
-  let shown = false; try { shown = sessionStorage.getItem("gy-splash") === "1"; sessionStorage.setItem("gy-splash", "1"); } catch(e){}
+  let shown = false; try { shown = sessionStorage.getItem("gy-splash") === "1"; } catch(e){}
   if (shown || ob) return;
   const d = splashData(), el = document.createElement("div");
   el.id = "splash"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Bienvenida");
@@ -2899,18 +2900,22 @@ function showSplash(){
     <h1 id="spHi">${esc(d.hi)}</h1><p class="sp-line">${esc(d.line)}</p>${d.quote ? `<p class="sp-quote">${esc(d.quote)}</p>` : ""}
     ${d.chips.length ? `<div class="sp-chips">${d.chips.map(c => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
     ${d.askName ? `<form class="sp-name" id="spName"><label for="spNameIn">¿Cómo quieres que te salude?</label><div class="row" style="flex-wrap:nowrap"><input id="spNameIn" autocomplete="given-name" placeholder="Tu nombre" maxlength="30"><button class="btn small" type="submit">Guardar</button></div></form>` : ""}
-    <button class="btn big block sp-go" id="spGo">${esc(d.cta)}</button><div class="sp-bar"><i></i></div></div>`;
+    <button class="btn big block sp-go" id="spGo">${esc(d.cta)}</button><div class="sp-bar" aria-hidden="true"><i></i></div><p class="sp-hint" id="spHint">Toca la pantalla para pausar</p></div>`;
   document.body.appendChild(el);
-  const close = () => { clearTimeout(splashT); el.classList.add("out"); setTimeout(() => el.remove(), 380); if (S.profile && tab !== "hoy" && /entren|sesión|Retomar/.test(d.cta)) go("hoy"); };
+  /* Tiempo según lo que hay que leer: ~4 s + 0,35 s por palabra, entre 10 y 18 s */
+  const words = [d.hi, d.line, d.quote || "", ...d.chips].join(" ").split(/\s+/).length, dur = Math.max(10000, Math.min(18000, 4000 + words * 350));
+  el.querySelector(".sp-bar i").style.animationDuration = dur + "ms";
+  const close = () => { try { sessionStorage.setItem("gy-splash", "1"); } catch(e){} clearTimeout(splashT); el.classList.add("out"); setTimeout(() => el.remove(), 380); if (S.profile && tab !== "hoy" && /entren|sesión|Retomar/.test(d.cta)) go("hoy"); };
   const arm = ms => { clearTimeout(splashT); splashT = setTimeout(close, ms); };
   el.querySelector("#spGo").onclick = close;
-  el.addEventListener("click", e => { if (!e.target.closest("form,button,input")) close(); });
+  const pause = () => { clearTimeout(splashT); el.classList.add("hold"); el.querySelector("#spHint").textContent = "En pausa · toca el botón para continuar"; };
+  el.addEventListener("click", e => { if (!e.target.closest("form,button,input")) pause(); });
   const f = el.querySelector("#spName");
   if (f) {
-    const inp = f.querySelector("input"); inp.addEventListener("focus", () => { clearTimeout(splashT); el.classList.add("hold"); });
-    f.onsubmit = e => { e.preventDefault(); const v = inp.value.trim(); if (!v) return; S.profile.name = v; save(); el.querySelector("#spHi").textContent = splashData().hi; f.remove(); el.classList.remove("hold"); arm(2200); };
+    const inp = f.querySelector("input"); inp.addEventListener("focus", pause);
+    f.onsubmit = e => { e.preventDefault(); const v = inp.value.trim(); if (!v) return; S.profile.name = v; save(); el.querySelector("#spHi").textContent = splashData().hi; f.remove(); };
   }
-  arm(d.askName ? 9000 : 6500);
+  arm(d.askName ? dur + 6000 : dur);
 }
 
 /* ============ Avisos: descanso y recordatorios ============ */
@@ -3138,7 +3143,7 @@ window.addEventListener("online", () => setSync()); window.addEventListener("off
 if ("serviceWorker" in navigator) {
   /* Actualizaciones: el iPhone retoma la app suspendida en vez de recargarla, así que al volver a la app
      se busca una versión nueva y, si la hay, se aplica sola (salvo en plena rutina). */
-  const busy = () => (typeof WP !== "undefined" && WP) || (typeof ob !== "undefined" && ob);
+  const busy = () => (typeof WP !== "undefined" && WP) || (typeof ob !== "undefined" && ob) || document.getElementById("splash");
   let pendingReload = false;
   const applyUpdate = () => { if (busy()) { pendingReload = true; return; } location.reload(); };
   navigator.serviceWorker.register("./sw.js", {updateViaCache: "none"}).then(reg => {
