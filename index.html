@@ -93,6 +93,9 @@ p{margin:0}
 .logo{width:30px;height:30px;flex:none;display:block}
 .logo.big{width:64px;height:64px}
 /* Pantalla de inicio: un solo mundo de marca (verde petróleo), igual en tema claro y oscuro */
+@keyframes rflash{0%,100%{box-shadow:inset 0 0 0 0 transparent}20%,60%{box-shadow:inset 0 0 0 100vmax rgba(242,165,22,.55)}40%,80%{box-shadow:inset 0 0 0 100vmax rgba(242,165,22,.15)}}
+.wp.rflash,.restbar.rflash .in{animation:rflash 1.8s ease-out}
+@media (prefers-reduced-motion:reduce){.wp.rflash,.restbar.rflash .in{animation:none;outline:6px solid #F2A516}}
 #splash{position:fixed;inset:0;z-index:90;background:#0F6B6F;color:#fff;display:flex;align-items:center;overflow-y:auto;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 24px) calc(env(safe-area-inset-bottom,0px) + 24px);transition:opacity .35s ease,transform .35s ease}
 #splash.out{opacity:0;transform:scale(1.03);pointer-events:none}
 #splash .in{max-width:460px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:14px}
@@ -2305,8 +2308,8 @@ function finishSession(items, ps){
 }
 let restTimer = 0, restEnd = 0;
 function startRest(sec){ restEnd = Date.now() + sec * 1000; $("#restbar").hidden = false; tickRest(); clearInterval(restTimer); restTimer = setInterval(tickRest, 250); keepAwake(); }
-function tickRest(){ const left = Math.max(0, Math.round((restEnd - Date.now()) / 1000)); $("#restT").textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`; if (left <= 0) { const late = (Date.now() - restEnd) / 1000; stopRest(); beep(988, .25); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){} pwaNotify("Descanso terminado", "Sigue con tu siguiente serie."); if (late > 3) toast(`Tu descanso terminó hace ${Math.round(late)} s`); } }
-function stopRest(){ clearInterval(restTimer); $("#restbar").hidden = true; if (typeof NOTIF !== "undefined" && !WP) { NOTIF.clear(); releaseAwake(); } }
+function tickRest(){ const left = Math.max(0, Math.round((restEnd - Date.now()) / 1000)); $("#restT").textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`; if (left <= 0) { const late = (Date.now() - restEnd) / 1000; $("#restbar").classList.add("rflash"); restEndAlert(); setTimeout(stopRest, 1500); clearInterval(restTimer); pwaNotify("Descanso terminado", "Sigue con tu siguiente serie."); if (late > 3) toast(`Tu descanso terminó hace ${Math.round(late)} s`); } }
+function stopRest(){ clearInterval(restTimer); $("#restbar").hidden = true; $("#restbar").classList.remove("rflash"); if (typeof NOTIF !== "undefined" && !WP) { if (!document.hidden) NOTIF.clear(); releaseAwake(); } }
 $("#restSkip").addEventListener("click", stopRest);
 $("#restAdd").addEventListener("click", () => { restEnd += 30000; tickRest(); });
 
@@ -2353,7 +2356,11 @@ function renderPlan(){
   $("#view").querySelectorAll("[data-guide]").forEach(b => b.addEventListener("click", () => openGuide(b.dataset.guide)));
   $("#editP").addEventListener("click", () => startOnboarding(true));
   if (window.PWA_MODE) bindPwaSection();
-  $("#icsBtn") && ($("#icsBtn").onclick = () => saveFile("gymnos-recordatorios.ics", icsFile(S.profile)));
+  $("#icsBtn") && ($("#icsBtn").onclick = () => {
+    const txt = icsFile(S.profile);
+    if (!isIOS()) return saveFile("gymnos-recordatorios.ics", txt);
+    try { const url = URL.createObjectURL(new Blob([txt], {type: "text/calendar"})), a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); toast("Se abre el calendario: toca «Agregar todo»"); } catch(e) { saveFile("gymnos-recordatorios.ics", txt); }
+  });
   $("#resetSw").addEventListener("click", () => { S.profile.swaps = {}; save(); renderPlan(); });
   $("#expJson").addEventListener("click", () => saveFile(`gymnos-${todayISO()}.json`, JSON.stringify({app:"coach-de-bolsillo", v:3, exported:todayISO(), S, photos:PHOTOS}, null, 1)));
   $("#expCsv").addEventListener("click", () => { const rows = [["fecha","sesion","ejercicio","serie","kg","reps","rir"]]; S.logs.forEach(s => s.entries.forEach(e => e.sets.forEach((x, k) => rows.push([s.date, s.day, EXI[e.id]?.n || e.id, k + 1, x.kg ?? "", x.reps, x.rir ?? ""])))); saveFile(`sesiones-${todayISO()}.csv`, rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")); });
@@ -2836,8 +2843,8 @@ function pwaSectionHTML(){
     ${np === "denied" ? `<p class="small muted">Lo bloqueaste antes. Actívalo en ${ios ? "Ajustes › Notificaciones › Gymnós" : "Ajustes › Apps › Gymnós (o Chrome) › Notificaciones"} y vuelve a abrir la app.</p>` : ""}
     ${np === "unsupported" && ios ? `<p class="small muted">En iPhone los avisos solo existen con la app agregada a la pantalla de inicio (iOS 16.4 o superior).</p>` : ""}
     <details><summary class="small" style="cursor:pointer;font-weight:600">Cómo funcionan los avisos en tu celular</summary><ul class="clean small" style="margin-top:8px">
-      <li>Durante la rutina guiada la pantalla no se apaga: con la app abierta, al terminar el descanso suena y vibra.</li>
-      ${ios ? `<li>iPhone pausa las apps que no estás viendo. Si sales de Gymnós durante el descanso, te dejamos un aviso con la hora exacta para volver, y al regresar te decimos si ya terminó.</li><li>Revisa que el modo Concentración no esté silenciando a Gymnós.</li>`
+      <li>Durante la rutina guiada la pantalla no se apaga: con la app abierta, al terminar el descanso ${ios ? "suena y la pantalla destella" : "suena y vibra"}.</li>
+      ${ios ? `<li>iPhone pausa las apps que no estás viendo. Si sales de Gymnós durante el descanso, te dejamos un aviso con la hora exacta para volver, y al regresar te decimos si ya terminó.</li><li>La web no puede hacer vibrar el iPhone: al terminar el descanso suena tres veces (por encima de tu música, sin pausarla) y la pantalla destella en ámbar.</li><li>Si no te llegan: Ajustes › Notificaciones › Gymnós › Permitir notificaciones, con banners y sonido. Si usas un modo Concentración (Gimnasio, No molestar), agrega Gymnós a las apps permitidas.</li><li>Gymnós debe estar instalada desde Safari: Compartir › Agregar a inicio, con "Abrir como app web" activado, y abrirse desde su ícono.</li>`
         : `<li>Si cambias de app, el aviso llega cuando termina el descanso. Al salir también te dejamos uno con la hora exacta para volver.</li><li>Si no te llega: Ajustes › Apps › Gymnós (o Chrome) › Batería › <b>Sin restricciones</b>, y revisa que las notificaciones estén permitidas.</li>`}
       <li>Los recordatorios para entrenar van en tu calendario (más abajo): suenan aunque no abras la app.</li></ul></details>
     <p class="small muted">Tus datos viven en este celular. Haz una copia de seguridad cada mes en "Tus datos". Para traer tu historial de la versión de Claude, exporta allí la copia (JSON) y restáurala aquí.</p></div></div>`;
@@ -2905,23 +2912,29 @@ function showSplash(){
 const NOTIF = {
   can(){ return !!window.PWA_MODE && "Notification" in window && "serviceWorker" in navigator; },
   perm(){ return "Notification" in window ? Notification.permission : "unsupported"; },
-  async show(title, body, tag = "descanso", extra = {}){ try { if (!this.can() || this.perm() !== "granted") return false; const r = await navigator.serviceWorker.ready; const o = Object.assign({body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag, renotify: true, vibrate: [200, 100, 200]}, extra); if (o.silent) delete o.vibrate; await r.showNotification(title, o); return true; } catch(e){ return false; } },
+  reg: null,
+  async show(title, body, tag = "descanso", extra = {}){ try { if (!this.can() || this.perm() !== "granted") return false; const r = this.reg || await navigator.serviceWorker.ready; const o = Object.assign({body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag, renotify: true, vibrate: [200, 100, 200]}, extra); if (o.silent) delete o.vibrate; await r.showNotification(title, o); return true; } catch(e){ return false; } },
   async clear(tag = "descanso"){ try { const r = await navigator.serviceWorker.ready; (await r.getNotifications({tag})).forEach(n => n.close()); } catch(e){} },
   async ask(){ try { const r = await Notification.requestPermission(); S.notifAsked = true; save(); return r; } catch(e){ return "default"; } }
 };
+try { if (window.PWA_MODE && "serviceWorker" in navigator) navigator.serviceWorker.ready.then(r => NOTIF.reg = r); } catch(e){}
 function pwaNotify(title, body){ if (document.hidden) NOTIF.show(title, body); }
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 let WAKE = null, AUD = null;
 async function keepAwake(){ try { if ((WP || !$("#restbar").hidden) && navigator.wakeLock && !document.hidden && (!WAKE || WAKE.released)) WAKE = await navigator.wakeLock.request("screen"); } catch(e){} }
 function releaseAwake(){ try { if (WAKE && !WP && $("#restbar").hidden) { WAKE.release(); WAKE = null; } } catch(e){} }
-document.addEventListener("pointerdown", () => { try { if (!AUD) AUD = new (window.AudioContext || window.webkitAudioContext)(); if (AUD.state === "suspended") AUD.resume(); } catch(e){} }, {capture: true, passive: true});
+function audioSessionTransient(){ try { if (navigator.audioSession && navigator.audioSession.type !== "transient") navigator.audioSession.type = "transient"; } catch(e){} }
+document.addEventListener("pointerdown", () => { try { audioSessionTransient(); if (!AUD) AUD = new (window.AudioContext || window.webkitAudioContext)(); if (AUD.state === "suspended") AUD.resume(); } catch(e){} }, {capture: true, passive: true});
+/* Fin de descanso visible: en iPhone la web no puede vibrar, así que la pantalla destella */
+function restFlash(){ const el = WP ? $("#wp") : $("#restbar"); if (!el) return; el.classList.remove("rflash"); void el.offsetWidth; el.classList.add("rflash"); setTimeout(() => el.classList.remove("rflash"), 1900); }
+function restEndAlert(){ beep(988, .22); setTimeout(() => beep(988, .22), 300); setTimeout(() => beep(1175, .35), 600); buzz([200, 100, 200]); restFlash(); }
 const restEndNow = () => WP && WP.phase === "rest" ? WP.restEnd : (!$("#restbar").hidden ? restEnd : 0);
-document.addEventListener("visibilitychange", () => {
+function onLeave(){
   const end = restEndNow();
-  if (document.hidden) {
-    if (end > Date.now() + 3000) { const t = new Date(end).toLocaleTimeString("es-CO", {hour: "numeric", minute: "2-digit", second: "2-digit"}); NOTIF.show("Descanso en curso", `Vuelve a las ${t}${WP ? " para seguir con " + wpCur().ex.n : " para tu siguiente serie"}.`, "descanso", {silent: true, renotify: false}); }
-  } else { NOTIF.clear(); keepAwake(); }
-});
+  if (end > Date.now() + 3000) { const t = new Date(end).toLocaleTimeString("es-CO", {hour: "numeric", minute: "2-digit", second: "2-digit"}); NOTIF.show("Descanso en curso", `Vuelve a las ${t}${WP ? " para seguir con " + wpCur().ex.n : " para tu siguiente serie"}.`, "descanso", {silent: true, renotify: false}); }
+}
+window.addEventListener("pagehide", onLeave);
+document.addEventListener("visibilitychange", () => { if (document.hidden) onLeave(); else { NOTIF.clear(); keepAwake(); audioSessionTransient(); } });
 /* Recordatorios como eventos que se repiten en el calendario del celular (.ics) */
 function icsFile(p){
   const wds = p.wdays || defaultWdays(p.days), BY = ["MO","TU","WE","TH","FR","SA","SU"], pad = n => String(n).padStart(2, "0");
@@ -3100,7 +3113,7 @@ function tickWP(){
     const left = (WP.restEnd - Date.now()) / 1000, t = el.querySelector("#ringT"), a = el.querySelector("#ringArc");
     if (t) { t.textContent = mmss(Math.max(0, Math.ceil(left))); a.setAttribute("stroke-dashoffset", 2 * Math.PI * 88 * (1 - Math.max(0, left) / WP.restTotal)); }
     const sx = Math.ceil(left); if (sx <= 3 && sx > 0 && WP.lastCount !== sx) { WP.lastCount = sx; beep(740, .08); }
-    if (left <= 0) { const late = -left; beep(988, .25); buzz([200, 100, 200]); WP.flash = late > 3 ? `Tu descanso terminó hace ${Math.round(late)} s. Sigue cuando estés listo.` : ""; wpPrepSet(); pwaNotify("Descanso terminado", `Sigue: ${wpCur().ex.n}`); renderWP(); }
+    if (left <= 0) { const late = -left; restEndAlert(); WP.flash = late > 3 ? `Tu descanso terminó hace ${Math.round(late)} s. Sigue cuando estés listo.` : ""; wpPrepSet(); pwaNotify("Descanso terminado", `Sigue: ${wpCur().ex.n}`); renderWP(); }
   }
 }
 
