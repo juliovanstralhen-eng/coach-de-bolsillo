@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Coach">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "4.1";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "4.2";</script>
 <title>Coach de Bolsillo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -696,7 +696,7 @@ function planState(){
   const week = Math.floor(done / days) % cl + 1;
   return {plan, days, done, week, block: Math.floor(done / (days * cl)) + 1, dayIdx: done % days, cl, deload: isDeload(week, p)};
 }
-function sessionItems(day, p){ return day.items.map(id => EXI[(p.swaps || {})[id] || id]).filter(Boolean); }
+function sessionItems(day, p, live){ const tmp = live && draft && draft.key === String(S.done || 0) ? (draft.tmp || {}) : {}; return day.items.map(id => { const base = (p.swaps || {})[id] || id; return EXI[tmp[base] || base]; }).filter(Boolean); }
 function partnerOf(day, i){ const ss = day.ss || []; if (ss.includes(i)) return i + 1; if (ss.includes(i - 1)) return i - 1; return -1; }
 function lastEntries(exId, n = 2){
   const out = [];
@@ -1591,8 +1591,9 @@ function updateProgress(){
   $("#progT").textContent = done === total && total ? "¡Todas las series hechas! Guarda la sesión." : `${done} de ${total} series`;
 }
 function renderHoy(){
-  const p = S.profile, ps = planState(), day = ps.plan[ps.dayIdx], items = sessionItems(day, p);
-  const key = String(ps.done); if (draft.key !== key) { draft = {key, ex:{}}; saveDraft(); }
+  const p = S.profile, ps = planState(), day = ps.plan[ps.dayIdx], key = String(ps.done);
+  if (draft.key !== key) { draft = {key, ex:{}}; saveDraft(); }
+  const items = sessionItems(day, p, true);
   items.forEach(ex => ensureDraft(ex, ps));
   const sum = weeklySummary(), showSum = sum && S.sumSeen !== sum.pk, sig = deloadSignal();
   $("#view").innerHTML = `${(S.notices || []).map((n, i) => `<div class="note warn row between" style="margin-bottom:12px;flex-wrap:nowrap;gap:10px"><span>${esc(n)}</span><button class="btn small" data-notice="${i}">Entendido</button></div>`).join("")}
@@ -1626,7 +1627,7 @@ function exCard(ex, i, ps, day){
         <input type="number" inputmode="numeric" id="${ex.id}-rir-${j}" aria-label="RIR serie ${j + 1}" value="${esc(s.rir)}" placeholder="${rx.rir ?? "–"}" data-f="rir" data-j="${j}" min="0" max="6" ${rx.unit === "reps" ? "" : "disabled"}>
         <button class="done" aria-pressed="${s.ok}" aria-label="Marcar serie ${j + 1} como hecha" data-ok="${j}">${ICON_CHECK}</button>`).join("")}
     </div>
-    <div class="row">${alts.length ? `<button class="btn small ghost" data-swap="${ex.id}">Cambiar ejercicio</button>` : ""}<button class="btn small ghost" data-feel="${ex.id}">¿Lo sientes en otro lado?</button><button class="btn small ghost" data-pain="${ex.id}">Sentí dolor</button>
+    <div class="row">${alts.length ? `<button class="btn small ghost" data-swap="${ex.id}">Cambiar ejercicio</button>` : ""}<button class="btn small ghost" data-feel="${ex.id}">¿Lo sientes en otro lado?</button>${busyParts(ex).length ? `<button class="btn small ghost" data-busy="${ex.id}">Máquina ocupada</button>` : ""}<button class="btn small ghost" data-pain="${ex.id}">Sentí dolor</button>
       ${kg ? `<label class="small row" style="gap:6px;flex-wrap:nowrap">Salto de peso <select data-step="${ex.id}" style="min-height:34px;width:auto;padding:4px 8px">${[0.5,1,1.25,2,2.5,5,10].map(v => `<option value="${v}" ${stepFor(ex) == v ? "selected" : ""}>${fmt(v, 2)} kg</option>`).join("")}</select></label>` : ""}</div>
     <div class="swapbox" hidden></div><div class="feelbox stack" hidden></div>
   </article>`;
@@ -1658,6 +1659,7 @@ function bindHoy(items, ps, day){
     }));
     const sel = card.querySelector("[data-step]"); sel && sel.addEventListener("change", () => { (S.stepSz = S.stepSz || {})[id] = +sel.value; save(); renderHoy(); });
     card.querySelector("[data-pain]").addEventListener("click", () => openPain(id, () => renderHoy()));
+    const bz = card.querySelector("[data-busy]"); bz && bz.addEventListener("click", () => openBusy(id, day, items, () => renderHoy()));
     const sw = card.querySelector("[data-swap]");
     sw && sw.addEventListener("click", () => {
       const box = card.querySelector(".swapbox"), alts = candidates(ex.pat, S.profile).filter(e => e.id !== ex.id && painCount(e.id) < 2);
@@ -1675,6 +1677,8 @@ function bindHoy(items, ps, day){
 }
 function finishSession(items, ps){
   const num = v => v === "" || v == null ? null : +v;
+  const extra = Object.keys(draft.ex || {}).filter(id => EXI[id] && !items.some(e => e.id === id) && draft.ex[id].sets.some(x => x.ok)).map(id => EXI[id]);
+  items = [...extra, ...items];
   const entries = items.filter(ex => !(draft.ex[ex.id] && draft.ex[ex.id].skip)).map(ex => ({id: ex.id, sets: (draft.ex[ex.id]?.sets || []).filter(s => s.ok).map(s => ({kg: num(s.kg), reps: +s.reps || 0, rir: num(s.rir)}))})).filter(e => e.sets.length);
   if (!entries.length) {
     openSheet(`<div class="grab"><h2>Sin series registradas</h2><button class="btn small" data-close>Cerrar</button></div><p class="muted" style="margin-bottom:14px">Marca con ✓ las series que hiciste para que el coach calcule tu próxima carga. Si hoy no entrenaste, puedes saltar esta sesión.</p><div class="row"><button class="btn" data-close>Volver</button><button class="btn primary" id="skipS">Saltar sesión</button></div>`, sh => sh.querySelector("#skipS").addEventListener("click", () => { S.done++; save(); closeSheet(); renderHoy(); }));
@@ -1980,6 +1984,48 @@ Responde SOLO con JSON: {"recetas":[{"nombre":"","tiempo_min":0,"ingredientes":[
   }
 }
 
+/* ============ Máquina ocupada ============ */
+/* Patrones que trabajan el mismo músculo principal, en orden de parecido */
+const MUSCLE_PATS = {Pecho:["hp"], Espalda:["vl","hl"], Hombros:["vp","la"], Cuádriceps:["sq","lu","ke"], Isquios:["hi","kf"], Glúteos:["gl","lu","hi","sq"], Bíceps:["bi"], Tríceps:["tr"], Pantorrillas:["ca"], Core:["co"]};
+const primaryMuscle = ex => Object.keys(ex.g || {}).find(m => ex.g[m] >= 1) || Object.keys(ex.g || {})[0];
+/* Equipo concreto que usa hoy este ejercicio (la primera alternativa disponible) */
+function busyParts(ex){ if (!S.profile || ["cardio","pf","bal"].includes(ex.pat)) return []; const eq = equipSet(S.profile), alt = ex.eq.find(a => a === "" || a.split("+").every(x => eq.has(x))); return alt ? alt.split("+").filter(Boolean) : []; }
+const eqText = (ex, eq) => { const alt = ex.eq.find(a => a === "" || a.split("+").every(x => eq.has(x))); return alt ? alt.split("+").map(x => EQUIP_LABEL[x] || x).join(" + ") : "Sin equipo"; };
+function busyAlternatives(ex, items){
+  const p = S.profile, eq = equipSet(p), busy = new Set(busyParts(ex)), inSession = new Set(items.map(e => e.id));
+  /* Sin la máquina ocupada: el ejercicio debe poder hacerse con otra opción de equipo */
+  const freeEq = new Set([...eq].filter(x => !busy.has(x)));
+  const ok = e => e.id !== ex.id && !inSession.has(e.id) && painCount(e.id) < 2 && (e.id !== "sq_silla" || isSenior(p) || !!special(p).mode) && e.eq.some(a => a === "" || a.split("+").every(x => freeEq.has(x)));
+  const same = candidates(ex.pat, p).filter(ok).map(e => ({ex: e, why: "Mismo movimiento"}));
+  const pats = (MUSCLE_PATS[primaryMuscle(ex)] || []).filter(pt => pt !== ex.pat);
+  const other = pats.flatMap(pt => candidates(pt, p)).filter(ok).filter(e => !same.some(x => x.ex.id === e.id)).map(e => ({ex: e, why: `Mismo músculo: ${primaryMuscle(ex).toLowerCase()}`}));
+  const seen = new Set(); return [...same, ...other].filter(x => !seen.has(x.ex.id) && seen.add(x.ex.id)).slice(0, 6);
+}
+function openBusy(exId, day, items, after){
+  const ex = EXI[exId], ps = planState(), eq = equipSet(S.profile), alts = busyAlternatives(ex, items);
+  const remaining = items.filter(e => e.id !== exId && draft.ex[e.id] && !draft.ex[e.id].skip && draft.ex[e.id].sets.some(x => !x.ok)).length;
+  const did = draft.ex[exId] ? draft.ex[exId].sets.filter(x => x.ok).length : 0;
+  openSheet(`<div class="grab"><div><div class="eyebrow">${esc(ex.n)} · ${esc(eqText(ex, eq))}</div><h2>Máquina ocupada</h2></div><button class="btn small" data-close>Cerrar</button></div>
+    <div class="stack">
+      ${remaining ? `<button class="btn block" id="bzLater" style="justify-content:flex-start;text-align:left;min-height:56px;border-radius:var(--r);padding-block:10px"><span><b>Hacer otro ejercicio y volver luego</b><br><span class="small muted">Sigues con el siguiente y este queda para el final.</span></span></button>` : ""}
+      ${alts.length ? `<div class="eyebrow" style="margin-top:4px">O cámbialo hoy por</div>
+        ${alts.map(({ex: a, why}) => { const rx = rxFor(a, S.profile, ps.week, true); return `<button class="btn block" data-alt="${a.id}" style="justify-content:space-between;text-align:left;min-height:62px;gap:10px;border-radius:var(--r);padding-block:10px"><span style="min-width:0"><b>${esc(a.n)}</b><br><span class="small muted">${eqText(a, eq).toLowerCase() === a.n.toLowerCase() ? "" : esc(eqText(a, eq)) + " · "}${rxLine(rx)}</span></span><span class="chip ${why === "Mismo movimiento" ? "acc" : ""}" style="flex:none">${esc(why)}</span></button>`; }).join("")}
+        ${chk("bzKeep", false, "Usar siempre esta alternativa en mi plan", "Útil si esta máquina casi siempre está ocupada a tu hora.")}`
+      : `<p class="muted">No hay otra opción con tu equipo para este músculo. Espera a que se libere o salta el ejercicio.</p>`}
+      ${did ? `<p class="small muted">Las ${did} series que ya hiciste de ${esc(ex.n)} quedan guardadas.</p>` : ""}
+    </div>`, sh => {
+    const later = sh.querySelector("#bzLater");
+    later && (later.onclick = () => { draft.later = (draft.later || []).filter(x => x !== exId).concat(exId); saveDraft(); closeSheet(); toast("Lo dejamos para el final"); after && after(`${ex.n} quedó para el final de la sesión.`); });
+    sh.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => {
+      const to = b.dataset.alt, keep = sh.querySelector("#bzKeep") && sh.querySelector("#bzKeep").checked;
+      if (keep) setSwap(exId, to);
+      else { const base = day.items.map(id => (S.profile.swaps || {})[id] || id).find(id => ((draft.tmp || {})[id] || id) === exId) || exId; draft.tmp = Object.assign({}, draft.tmp, {[base]: to}); if (to === base) delete draft.tmp[base]; }
+      draft.later = (draft.later || []).filter(x => x !== exId); saveDraft();
+      closeSheet(); toast(keep ? "Cambiado en tu plan" : "Cambiado solo por hoy"); after && after(`Cambiamos ${ex.n} por ${EXI[to].n}${keep ? " en tu plan" : " solo por hoy"}.`);
+    });
+  });
+}
+
 /* ============ Vistas: piezas nuevas ============ */
 const term = (k, label) => `<button type="button" class="term" data-term="${k}">${label}</button>`;
 function openTerm(k){
@@ -2206,12 +2252,12 @@ function wpOrder(){
   }
   return out;
 }
-function wpFindNext(){ for (const [i, j] of wpOrder()) { const d = draft.ex[WP.items[i].id]; if (!d || d.skip) continue; if (!d.sets[j] || !d.sets[j].ok) { WP.i = i; WP.j = j; return true; } } return false; }
+function wpFindNext(){ const later = draft.later || [], ord = wpOrder(), seq = ord.filter(([i]) => !later.includes(WP.items[i].id)).concat(ord.filter(([i]) => later.includes(WP.items[i].id))); for (const [i, j] of seq) { const d = draft.ex[WP.items[i].id]; if (!d || d.skip) continue; if (!d.sets[j] || !d.sets[j].ok) { WP.i = i; WP.j = j; return true; } } return false; }
 function wpCur(){ const ex = WP.items[WP.i], o = ensureDraft(ex, WP.ps); return {ex, rx: o.rx, d: o.d, st: o.d.sets[WP.j], kg: usesKg(ex, equipSet(S.profile))}; }
 function wpTotals(){ let done = 0, total = 0; WP.items.forEach(ex => { const {rx, d} = ensureDraft(ex, WP.ps); if (d.skip) return; total += rx.sets; done += d.sets.slice(0, rx.sets).filter(x => x.ok).length; }); return {done, total}; }
 function startWorkout(){
   if (parqBlock(S.profile)) return;
-  const ps = planState(), day = ps.plan[ps.dayIdx], items = sessionItems(day, S.profile);
+  const ps = planState(), day = ps.plan[ps.dayIdx], items = sessionItems(day, S.profile, true);
   if (!draft.t0) { draft.t0 = Date.now(); saveDraft(); }
   items.forEach(ex => ensureDraft(ex, ps));
   WP = {ps, day, items, i:0, j:0, phase:"set", reps:0, extra:0, setStart:Date.now(), t0:draft.t0, restEnd:0, restTotal:60, metro:false, lastBeat:0, flash:"", calibNow:false};
@@ -2222,7 +2268,7 @@ function startWorkout(){
   renderWP(); WP.timer = setInterval(tickWP, 200);
 }
 function wpPrepSet(){ const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.metro = false; WP.calibNow = c.kg && !c.ex.assist && !lastEntries(c.ex.id, 1).length && !c.d.calibrated && !c.d.sets.some(x => x.ok); }
-function wpRebuild(){ WP.items = sessionItems(WP.day, S.profile); WP.items.forEach(ex => ensureDraft(ex, WP.ps)); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); }
+function wpRebuild(){ WP.items = sessionItems(WP.day, S.profile, true); WP.items.forEach(ex => ensureDraft(ex, WP.ps)); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); }
 function beep(f = 880, d = .09){ try { const a = WP && WP.audio; if (!a) return; if (a.state === "suspended") a.resume(); const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(.2, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + d); o.start(); o.stop(a.currentTime + d + .02); } catch(e){} }
 function buzz(p){ try { navigator.vibrate && navigator.vibrate(p); } catch(e){} }
 function exitWorkout(saveIt){
@@ -2246,7 +2292,7 @@ function setPanel(c){
     ${timed ? "" : `<div class="row between"><div class="row"><button class="btn small" id="wpMinus" aria-label="Restar una">−1</button>${c.rx.unit === "reps" ? `<button class="btn small" id="wpMetro" aria-pressed="${WP.metro}">${WP.metro ? "Ritmo activo" : "Contar con ritmo"}</button>` : ""}</div><span class="small muted">Serie <span class="num" id="wpSetT" style="font-size:17px">${mmss(el)}</span></span></div>`}
     ${WP.metro ? `<p class="small muted">El ritmo cuenta solo. Al terminar, confirma el número real.</p>` : ""}
     <button class="btn primary big block" id="wpEnd">${c.rx.unit === "min" ? "Terminar" : "Terminar serie"}</button>
-    <div class="row" style="justify-content:center"><button class="btn small ghost" id="wpPain">Sentí dolor</button><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>`;
+    <div class="row" style="justify-content:center">${busyParts(c.ex).length ? `<button class="btn small ghost" id="wpBusy">Máquina ocupada</button>` : ""}<button class="btn small ghost" id="wpPain">Sentí dolor</button><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>`;
 }
 function rirPanel(c){
   const practice = !WP.calibNow && isMachine(c.ex) && S.logs.length < 4;
@@ -2317,6 +2363,7 @@ function bindWP(){
     if (q("#wpMinus")) q("#wpMinus").onclick = () => { WP.reps = Math.max(0, WP.reps - 1); q("#wpN").textContent = WP.reps; };
     if (q("#wpMetro")) q("#wpMetro").onclick = () => { WP.metro = !WP.metro; WP.lastBeat = Date.now(); renderWP(); };
     q("#wpPain").onclick = () => openPain(c.ex.id, () => { if (WP) wpRebuild(); });
+    if (q("#wpBusy")) q("#wpBusy").onclick = () => openBusy(c.ex.id, WP.day, WP.items, msg => { if (WP) { WP.flash = msg || ""; wpRebuild(); } });
     q("#wpSkip").onclick = () => { c.d.skip = true; saveDraft(); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); };
     q("#wpEnd").onclick = () => {
       WP.metro = false;
