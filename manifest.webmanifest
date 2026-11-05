@@ -1,8 +1,8 @@
 {
- "name": "Coach de Bolsillo",
- "short_name": "Coach",
+ "name": "Gymnós · tu coach en el bolsillo",
+ "short_name": "Gymnós",
  "lang": "es-CO",
- "description": "Entrenador personal y nutricionista: plan progresivo, rutina guiada, técnica animada, progreso y recetas.",
+ "description": "Gymnós: entrenador y nutricionista en tu bolsillo. Plan que progresa contigo, técnica animada, rutina guiada y cocina de deportista. Gratis y sin internet.",
  "id": "./",
  "start_url": "./?app=1#hoy",
  "scope": "./",

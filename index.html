@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Entrenador personal y nutricionista: plan progresivo, rutina guiada, técnica animada, progreso y recetas.">
+<meta name="description" content="Gymnós: entrenador y nutricionista en tu bolsillo. Plan que progresa contigo, técnica animada, rutina guiada y cocina de deportista. Gratis y sin internet.">
 <meta name="theme-color" content="#ECEFEE" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1615" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -11,11 +11,11 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Coach">
+<meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "4.3";</script>
-<title>Coach de Bolsillo</title>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.0";</script>
+<title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -80,6 +80,8 @@ p{margin:0}
 .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:10px 10px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);margin-bottom:14px}
 .brand{white-space:nowrap;font-family:var(--display);font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
 .brand b{color:var(--accent)}
+.logo{width:30px;height:30px;flex:none;display:block}
+.logo.big{width:64px;height:64px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--sunk);color:var(--ink);font-size:12.5px;font-weight:600;border:1px solid transparent}
 .chip.acc{background:var(--accent-soft);color:var(--accent)}
 .chip.good{background:var(--good-soft);color:var(--good)}
@@ -238,7 +240,7 @@ th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mu
 
 <div class="wrap" id="app">
   <header class="topbar">
-    <div class="brand">Coach <b>de bolsillo</b></div>
+    <div class="brand row" style="gap:8px;flex-wrap:nowrap"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><path d="M45.6 18.9A19 19 0 1 0 51 34.5" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round"/><path d="M30 32.5h19" stroke="var(--go)" stroke-width="3" stroke-linecap="round"/><rect x="28.6" y="28" width="3" height="9" rx="1.3" fill="var(--go)"/><rect x="32.3" y="25" width="3.6" height="15" rx="1.5" fill="var(--go)"/><rect x="43.4" y="25" width="3.6" height="15" rx="1.5" fill="var(--go)"/><rect x="47.7" y="28" width="3" height="9" rx="1.3" fill="var(--go)"/></svg><span>Gym<b>nós</b></span></div>
     <span class="chip" id="syncChip" title="Dónde se guardan tus datos">En este equipo</span>
   </header>
   <main id="view"></main>
@@ -927,6 +929,137 @@ function macrosOf(items){ return items.reduce((a, [name, g]) => { const f = FOOD
 const PL = {"unidad":"unidades","tajada":"tajadas","cda":"cdas","vaso":"vasos","arepa mediana":"arepas medianas","lata escurrida":"latas escurridas","4 cdas":"porciones de 4 cdas"};
 const plural = (u, n) => n > 1 ? (PL[u] || u + "s") : u;
 function qty(name, g){ const f = FOOD[name]; if (f && f.u) { const n = g / f.u[0]; const r = Math.max(.5, Math.round(n * 2) / 2); return `${fmt(r)} ${plural(f.u[1], r)} (${Math.round(g)} g)`; } return `${Math.round(g / 5) * 5} g${f && f.st ? " " + f.st : ""}`; }
+/* ============ Cocina de deportista (recetas de chef, rápidas y amables con el estómago) ============ */
+/* Despensa básica que se da por hecha: sal, pimienta, ajo, limón, comino, pimentón, orégano, canela y cilantro */
+const NICK = {"Pollo (pechuga)":"pollo","Carne molida magra":"carne molida","Atún en lata":"atún","Sardinas en lata":"sardinas","Yogur natural":"yogur","Mantequilla de maní":"mantequilla de maní","Fríjol":"fríjoles","Lenteja":"lentejas","Garbanzo":"garbanzos","Huevo":"huevos"};
+const FEM = new Set(["Zanahoria","Ahuyama","Habichuela","Espinaca","Cebolla","Papa","Yuca","Arepa","Pasta","Avena","Leche","Lenteja","Carne molida magra","Papaya","Guayaba","Mantequilla de maní"]);
+const lw = n => NICK[n] || (n || "").toLowerCase();
+const art = n => (FEM.has(n) ? "la " : "el ") + lw(n);
+const carbStep = c => ({
+  "Arroz":"Arroz suelto: 1 parte de arroz por 2 de agua con sal y un diente de ajo, 18 min tapado a fuego bajo; suéltalo con un tenedor. Si ya tienes arroz cocido, caliéntalo con 1 cda de agua.",
+  "Papa":"Corta la papa en cubos de 2 cm, cocínala 12 min en agua con sal, escúrrela y dórala 3 min en la sartén para que tenga costra.",
+  "Yuca":"Cocina la yuca en agua con sal 20–25 min, hasta que se abra; escúrrela y dale 2 min de sartén.",
+  "Plátano":"Corta el maduro en rodajas gruesas y ásalo en sartén antiadherente tapado, 4 min por lado, sin aceite: se carameliza solo.",
+  "Pasta":"Cocina la pasta en abundante agua con sal según el paquete (8–11 min) y guarda media taza del agua de cocción.",
+  "Arepa":"Asa la arepa 4 min por lado en sartén caliente, hasta que tenga costra dorada.",
+  "Pan integral":"Tuesta el pan hasta que cruja.",
+  "Avena":"Tuesta la avena 2 min en sartén seca con canela."
+}[c] || "");
+const protStep = p => ({
+  "Pollo (pechuga)":"Abre la pechuga en filetes de 1 cm (así queda jugosa), sazona con sal, ajo y pimienta y dórala en sartén bien caliente 4 min por lado sin moverla.",
+  "Carne molida magra":"Dora la carne en sartén bien caliente sin moverla 2 min para que caramelice; luego desmenúzala y sazona con comino, pimentón, ajo y sal.",
+  "Atún en lata":"Escurre el atún y desmenúzalo con limón, sal y pimienta.",
+  "Queso campesino":"Corta el queso en cubos y dóralo 1 min en sartén antiadherente.",
+  "Huevo":"Cocina los huevos a fuego medio-bajo: la yema suave hace el plato.",
+  "Sardinas en lata":"Parte las sardinas en trozos grandes.",
+  "Lenteja":"Usa lentejas cocidas (o cocina las secas 25 min tras remojarlas).",
+  "Fríjol":"Usa fríjoles cocidos con un poco de su caldo.",
+  "Garbanzo":"Enjuaga los garbanzos cocidos y sécalos bien."
+}[p] || "");
+const CHEF = [
+ {id:"oats", meals:["desayuno","snack"], t:5, tag:"Prepárala la noche anterior", need:{prot:["Yogur natural","Leche"], carb:["Avena"], fr:["Banano","Mango","Papaya","Guayaba"]}, opt:{fat:["Mantequilla de maní"]},
+  title: s => `Avena de noche con ${lw(s.fr)}${s.fat ? " y maní" : ""}`,
+  steps: s => [`En un frasco mezcla la avena con ${art(s.prot)}, una pizca de canela y una de sal.`, "Tapa y refrigera toda la noche (mínimo 2 h).", `Al servir, pon encima ${art(s.fr)} en trozos${s.fat ? " y un hilo de mantequilla de maní" : ""}.`],
+  plate: "En frasco de vidrio se ven las capas de avena y fruta, y te la llevas al trabajo.", tummy: "Remojada, la avena se digiere más fácil que cocida a la carrera."},
+ {id:"pancakes", meals:["desayuno","snack"], t:12, tag:"Antes de entrenar", oil:1, need:{prot:["Huevo"], carb:["Avena"], fr:["Banano"]}, opt:{top:["Yogur natural"]},
+  title: () => "Pancakes de banano y avena", fixed: s => s.top ? [["Yogur natural", 80]] : [], pmax:100,
+  steps: s => ["Pisa el banano con un tenedor hasta hacer un puré.", "Mézclalo con los huevos, la avena, canela y una pizca de sal. Deja reposar 3 min para que la avena hidrate.", "Sartén antiadherente a fuego medio-bajo con gotas de aceite: haz pancakes pequeños, 2 min por lado, hasta que doren.", s.top ? "Sírvelos con una cucharada de yogur encima." : "Sírvelos con canela por encima."],
+  plate: "Apílalos, pon el yogur arriba y unas rodajas de banano: se ven de cafetería.", tummy: "Pocos ingredientes y nada de fritura: buena opción 1–2 h antes de entrenar."},
+ {id:"arepa", meals:["desayuno","snack","cena"], t:12, oil:1, need:{prot:["Huevo"], carb:["Arepa","Pan integral"]}, opt:{veg:["Tomate","Espinaca"], fat:["Aguacate"]},
+  title: s => `${s.carb === "Arepa" ? "Arepa abierta" : "Tostada"} con huevo${s.fat ? ", aguacate" : ""}${s.veg ? " y " + lw(s.veg) : ""}`,
+  steps: s => [carbStep(s.carb), "Cocina los huevos a la plancha con la yema suave, o revueltos a fuego bajo sin dejar que se sequen.", s.veg ? `Pica ${art(s.veg)} y sazónalo con sal, limón y pimienta.` : "", `Ábrela y pon encima ${s.fat ? "el aguacate en láminas, " : ""}el huevo${s.veg ? " y " + art(s.veg) : ""}. Termina con pimienta y cilantro.`].filter(Boolean),
+  plate: "Córtala en dos y deja ver la yema: el contraste de amarillo, verde y rojo abre el apetito.", tummy: "Si entrenas en menos de una hora, usa poco aguacate: la grasa hace más lenta la digestión."},
+ {id:"omelette", meals:["desayuno","cena"], t:10, oil:1, need:{prot:["Huevo"], veg:["Espinaca","Tomate","Cebolla"]}, opt:{side:["Queso campesino"], carb:["Pan integral","Arepa"]},
+  title: s => `Omelette de ${lw(s.veg)}${s.side ? " y queso campesino" : ""}`, fixed: s => s.side ? [["Queso campesino", 30]] : [],
+  steps: s => [`Saltea ${art(s.veg)} 2 min en sartén con gotas de aceite y una pizca de sal.`, "Bate los huevos con sal y pimienta hasta que hagan espuma: así queda esponjoso.", `Viértelos sobre la verdura a fuego bajo; cuando los bordes cuajen${s.side ? ", pon el queso en el centro y" : ""} dobla por la mitad.`, s.carb ? carbStep(s.carb) : "Sírvelo de inmediato."],
+  plate: "Sírvelo doblado en media luna, con orégano y un gajo de limón al lado.", tummy: "Fuego bajo y poca grasa: un omelette ligero cae bien también en la noche."},
+ {id:"yogbowl", meals:["desayuno","snack"], t:5, need:{prot:["Yogur natural"], fr:["Mango","Papaya","Guayaba","Banano"]}, opt:{carb:["Avena"], fat:["Mantequilla de maní"]},
+  title: s => `Bowl de yogur con ${lw(s.fr)}${s.carb ? " y avena tostada" : ""}`,
+  steps: s => [s.carb ? "Tuesta la avena 2–3 min en sartén seca con canela, hasta que huela a galleta." : "", "Sirve el yogur bien frío en un bol.", `Pon ${art(s.fr)} en cubos a un lado${s.carb ? " y la avena tostada al otro" : ""}.`, s.fat ? "Termina con un hilo de mantequilla de maní tibia." : "Termina con canela."].filter(Boolean),
+  plate: "Arma el bol por secciones, sin revolver: se ve más apetitoso y cada cucharada sabe distinto.", tummy: "El yogur aporta probióticos; si el lácteo te cae pesado, sirve una porción menor."},
+ {id:"shake", meals:["snack","desayuno"], t:3, tag:"Después de entrenar", uten:"licuadora", need:{prot:["Leche","Yogur natural"], fr:["Banano","Mango","Papaya"]}, opt:{carb:["Avena"], veg:["Espinaca"], fat:["Mantequilla de maní"]},
+  title: s => `Batido de recuperación de ${lw(s.fr)}${s.veg ? " y espinaca" : ""}`, vegG:25,
+  steps: s => [`Licúa ${art(s.prot)}, ${art(s.fr)}${s.carb ? ", la avena" : ""}${s.veg ? ", un puñado de espinaca" : ""}${s.fat ? " y la mantequilla de maní" : ""} con 3 cubos de hielo, 40 s.`, "Si lo quieres más espeso, usa la fruta congelada en vez de agregar azúcar.", "Tómalo en la hora siguiente al entreno."],
+  plate: "Sírvelo en vaso alto con una rodaja de fruta en el borde.", tummy: "Líquido y frío, se tolera bien cuando después de entrenar no tienes hambre."},
+ {id:"pollolimon", meals:["almuerzo","cena"], t:20, oil:1, need:{prot:["Pollo (pechuga)"], carb:["Arroz","Papa","Pasta"], veg:["Brócoli","Habichuela","Zanahoria","Ahuyama"]},
+  title: s => `Pollo al limón y ajo con ${lw(s.carb)} y ${lw(s.veg)}`,
+  steps: s => [carbStep(s.carb), "Abre la pechuga en filetes de 1 cm y sazónala con sal, ajo, pimienta y la ralladura de medio limón.", "Sartén bien caliente con 1 cdita de aceite: 4 min por lado sin moverla, para que dore.", `En la misma sartén saltea ${art(s.veg)} 4–5 min con 1 cda de agua: queda brillante y crujiente.`, "Apaga, exprime el limón sobre el pollo y déjalo reposar 2 min antes de cortarlo."],
+  plate: s => `Corta el pollo en diagonal y ábrelo en abanico junto ${s.carb === "Pasta" ? "a la pasta" : "al " + lw(s.carb)}; la verdura al lado y cilantro picado encima.`, tummy: "Plancha en vez de fritura y verdura bien cocida: se digiere fácil incluso antes de entrenar en la tarde."},
+ {id:"poke", meals:["almuerzo","cena"], t:10, tag:"Sin estufa si tienes arroz listo", need:{prot:["Atún en lata"], carb:["Arroz"], veg:["Pepino","Zanahoria","Tomate"]}, opt:{fat:["Aguacate"]},
+  title: s => `Bowl tipo poke de atún${s.fat ? ", aguacate" : ""} y ${lw(s.veg)}`,
+  steps: s => ["Usa arroz cocido, tibio o frío (o prepáralo: 1 por 2 de agua, 18 min).", "Mezcla el atún escurrido con limón, sal, pimienta y una pizca de comino.", `Corta ${art(s.veg)} en cubos o tiras finas${s.fat ? " y el aguacate en láminas" : ""}.`, "Arma el bol: arroz en la base y encima, cada cosa en su sección. Termina con limón y cilantro."],
+  plate: "Ordena cada ingrediente en su sección, como las horas de un reloj: los colores separados lo hacen ver de restaurante.", tummy: "Frío y sin fritura: ideal en días de calor o cuando el entreno te quita el apetito."},
+ {id:"tacos", meals:["almuerzo","cena"], t:18, oil:1, need:{prot:["Carne molida magra"], carb:["Arepa"], veg:["Tomate"]}, opt:{veg2:["Cebolla"], fat:["Aguacate"]},
+  title: s => `Tacos en arepa con carne${s.fat ? ", pico de gallo y aguacate" : " y pico de gallo"}`,
+  steps: s => [`Pico de gallo: pica el tomate${s.veg2 ? " y la cebolla" : ""} en cubos pequeños con limón, sal y cilantro; déjalo reposar mientras cocinas.`, protStep("Carne molida magra") + " 6–7 min en total.", "Calienta arepas delgadas o ábrelas por la mitad y tuéstalas.", `Rellena con la carne y el pico de gallo encima${s.fat ? ", más unas láminas de aguacate" : ""}.`],
+  plate: "Sirve 2 o 3 tacos en fila con el pico de gallo bien rojo encima y un gajo de limón.", tummy: "Si la cebolla cruda te cae pesada, sofríela 1 minuto antes de mezclarla."},
+ {id:"curry", meals:["almuerzo","cena"], t:20, oil:1, need:{prot:["Lenteja"], carb:["Arroz"], veg:["Zanahoria","Ahuyama","Tomate"]}, opt:{veg2:["Espinaca","Cebolla"]},
+  title: s => `Lentejas al curry suave con ${lw(s.veg)} y arroz`,
+  steps: s => [carbStep("Arroz"), "Sofríe ajo (y cebolla si tienes) en 1 cdita de aceite 2 min; agrega 1 cdita de curry o cúrcuma con comino y revuelve 30 s, hasta que suelte aroma.", `Suma ${art(s.veg)} en cubos pequeños y las lentejas cocidas con un poco de su caldo; cocina 10 min a fuego bajo.`, `Ajusta la sal y termina con limón${s.veg2 === "Espinaca" ? "; la espinaca va al final, solo para que se marchite" : ""}.`],
+  plate: "Arroz a un lado, lentejas al otro y cilantro picado encima: el amarillo del curry se luce.", tummy: "Remoja las lentejas secas 4–8 h y bota esa agua; el comino y una buena cocción reducen los gases."},
+ {id:"garbanzos", meals:["almuerzo","cena"], t:20, oil:1, need:{prot:["Garbanzo"], carb:["Papa","Arroz","Pan integral"], veg:["Tomate","Espinaca","Pepino"]},
+  title: s => `Garbanzos crocantes con ${s.carb === "Papa" ? "papas doradas" : lw(s.carb)} y ${lw(s.veg)}`,
+  steps: s => [carbStep(s.carb), "Seca muy bien los garbanzos y dóralos en sartén con 1 cdita de aceite, pimentón, comino y sal, 8 min, hasta que crujan.", `Corta ${art(s.veg)} y alíñalo con limón, sal y pimienta.`, "Junta todo tibio y pon los garbanzos encima al final, con orégano o cilantro."],
+  plate: "Los garbanzos van encima en el último momento para que no se ablanden: la textura crocante es la gracia.", tummy: "Si son de lata, enjuágalos bien: se digieren mejor."},
+ {id:"pastaahuyama", meals:["almuerzo","cena"], t:20, oil:1, need:{prot:["Pollo (pechuga)","Atún en lata","Queso campesino"], carb:["Pasta"], veg:["Ahuyama"]}, opt:{milk:["Leche"]},
+  title: s => `Pasta cremosa de ahuyama con ${lw(s.prot)}`, fixed: s => s.milk ? [["Leche", 80]] : [],
+  steps: s => [carbStep("Pasta"), `Cocina la ahuyama en cubos 8–10 min hasta que esté blanda y ${(S.utensils || []).includes("licuadora") ? "licúala" : "aplástala con un tenedor"} con ${s.milk ? "la leche" : "un poco del agua de la pasta"}, ajo, sal y pimienta: una crema naranja sin crema de leche.`, protStep(s.prot), "Mezcla la pasta con la salsa a fuego bajo 1 min, suma la proteína y termina con pimienta y orégano."],
+  plate: "Enrolla la pasta con un tenedor en el centro del plato y pon la proteína encima: el naranja se ve muy apetitoso.", tummy: "La ahuyama da cremosidad sin grasa: más liviana que una salsa blanca."},
+ {id:"sardinas", meals:["almuerzo","cena"], t:15, oil:1, need:{prot:["Sardinas en lata"], carb:["Papa","Yuca","Arroz","Arepa"], veg:["Tomate"]}, opt:{veg2:["Cebolla"]},
+  title: s => `Sardinas a la criolla con ${lw(s.carb)}`,
+  steps: s => [carbStep(s.carb), `Hogao rápido: sofríe el tomate${s.veg2 ? " y la cebolla" : ""} picados con ajo y comino 5 min, hasta que se ablanden.`, "Agrega las sardinas en trozos grandes, tapa y calienta 3 min a fuego bajo sin revolver mucho.", "Termina con limón y cilantro."],
+  plate: s => `Las sardinas sobre el hogao, ${art(s.carb)} al lado y cilantro fresco por encima.`, tummy: "Aportan omega-3; el limón al final suaviza el olor y el sabor."},
+ {id:"wok", meals:["almuerzo","cena"], t:18, oil:1, need:{prot:["Pollo (pechuga)","Carne molida magra"], carb:["Arroz","Pasta"], veg:["Habichuela","Zanahoria","Brócoli"]}, opt:{veg2:["Cebolla","Zanahoria","Habichuela"]},
+  title: s => `Salteado estilo wok de ${lw(s.prot)} con ${lw(s.veg)}`,
+  steps: s => [carbStep(s.carb), s.prot === "Pollo (pechuga)" ? "Corta el pollo en tiras finas y la verdura en bastones del mismo tamaño, para que todo se cocine parejo." : "Corta la verdura en bastones del mismo tamaño, para que se cocine pareja.", `Sartén al máximo con 1 cdita de aceite: dora ${s.prot === "Pollo (pechuga)" ? "el pollo 4 min" : "la carne 5 min"} y sácalo.`, "Saltea la verdura 3 min con ajo; vuelve la proteína, añade 2 cdas de agua con limón y pimienta y revuelve 1 min.", `Sírvelo sobre ${art(s.carb)}.`],
+  plate: "En bol hondo, con la verdura brillante encima y cilantro o cebolla larga para rematar.", tummy: "Cocción corta a fuego alto: la verdura conserva textura y el plato no queda pesado."},
+ {id:"bowlfrijol", meals:["almuerzo","cena"], t:20, oil:1, need:{prot:["Fríjol"], carb:["Plátano","Arroz","Arepa"]}, opt:{fat:["Aguacate"], veg:["Tomate","Cebolla"]},
+  title: s => `Bowl de fríjoles caseros con ${s.carb === "Plátano" ? "maduro asado" : lw(s.carb)}${s.fat ? " y aguacate" : ""}`,
+  steps: s => [`Calienta los fríjoles con ${s.veg ? "un hogao de " + lw(s.veg) + ", ajo" : "ajo"} y comino 8 min; aplasta un tercio para que espesen.`, carbStep(s.carb), s.fat ? "Corta el aguacate en láminas y ponle sal y limón." : "", `Sirve en bol: fríjoles en la base y ${s.carb === "Plátano" ? "el maduro" : art(s.carb)}${s.fat ? " con el aguacate" : ""} encima.`].filter(Boolean),
+  plate: "Como una bandeja paisa liviana: fríjol, maduro dorado y aguacate verde en un solo bol.", tummy: "Remoja el fríjol seco toda la noche, bota esa agua y cocínalo con comino: menos gases."},
+ {id:"shakshuka", meals:["cena","almuerzo","desayuno"], t:15, oil:1, need:{prot:["Huevo"], veg:["Tomate"]}, opt:{veg2:["Espinaca","Cebolla"], carb:["Pan integral","Arepa"]},
+  title: () => "Huevos en salsa de tomate (shakshuka criolla)",
+  steps: s => ["Sofríe ajo (y cebolla si tienes) 2 min; agrega el tomate picado, comino, pimentón y sal, y cocina 6 min hasta que espese.", `${s.veg2 === "Espinaca" ? "Suma la espinaca. " : ""}Haz huecos en la salsa y rompe un huevo en cada uno.`, "Tapa y cocina 4–5 min a fuego bajo, hasta que la clara cuaje y la yema siga suave.", s.carb ? `Sírvela en la sartén con ${art(s.carb)} tostado para mojar.` : "Sírvela en la misma sartén."],
+  plate: "Llévala a la mesa en la sartén: los huevos sobre el rojo del tomate son la foto.", tummy: "Si el tomate te da acidez, agrega zanahoria rallada a la salsa o una pizca de bicarbonato."},
+ {id:"bolo", meals:["almuerzo","cena"], t:20, oil:1, need:{prot:["Carne molida magra","Lenteja"], carb:["Pasta"], veg:["Tomate"]}, opt:{veg2:["Zanahoria","Cebolla"]},
+  title: s => `Pasta a la boloñesa rápida${s.prot === "Lenteja" ? " de lentejas" : ""}`,
+  steps: s => [carbStep("Pasta"), s.prot === "Lenteja" ? "Sofríe ajo con orégano 1 min y suma las lentejas cocidas." : protStep("Carne molida magra"), `Agrega el tomate picado${s.veg2 ? " y " + art(s.veg2) + " rallada" : ""}, sal y un chorrito del agua de la pasta; cocina 8 min a fuego bajo.`, "Mezcla con la pasta y termina con pimienta y orégano."],
+  plate: "Pasta en nido y la salsa encima, sin revolver del todo, con orégano por encima.", tummy: "La zanahoria rallada suaviza la acidez del tomate."},
+ {id:"maduroqueso", meals:["snack","cena"], t:15, tag:"Antes de entrenar", need:{prot:["Queso campesino"], carb:["Plátano"]},
+  title: () => "Maduro asado relleno de queso campesino", pmax:60,
+  steps: () => ["Pela el maduro y ábrelo a lo largo sin partirlo del todo.", "Ásalo en sartén antiadherente tapado, 5 min por lado.", "Rellénalo con el queso en tiras y tapa 2 min más para que se derrita."],
+  plate: "Sírvelo abierto, con el queso derretido a la vista y una pizca de canela.", tummy: "Buen snack 1–2 h antes de entrenar: carbohidrato rápido con algo de proteína."},
+ {id:"ensaladapapa", meals:["almuerzo","cena"], t:20, need:{prot:["Atún en lata","Huevo","Pollo (pechuga)"], carb:["Papa"], veg:["Tomate","Pepino","Habichuela","Cebolla"]}, opt:{fat:["Aguacate"]},
+  title: s => `Ensalada tibia de papa con ${lw(s.prot)} y ${lw(s.veg)}`,
+  steps: s => ["Cocina la papa en cubos 12 min en agua con sal y escúrrela.", s.prot === "Huevo" ? "Cocina los huevos 9 min en agua hirviendo, pásalos por agua fría y pártelos en cuartos." : protStep(s.prot), `Corta ${art(s.veg)}${s.fat ? " y el aguacate" : ""} en cubos.`, "Mezcla todo tibio con limón, una cdita de aceite si tienes, sal, pimienta y cilantro."],
+  plate: "Sírvela en plato hondo con la proteína encima y pimienta recién molida.", tummy: "Tibia y sin mayonesa: llena sin dejarte pesado."}
+];
+function chefRecipes(pantry, meal, t, meals){
+  const has = n => pantry.includes(n), kcalT = t.kcal / meals, protT = t.prot / meals, ut = S.utensils || [];
+  const out = [];
+  for (const tp of CHEF) {
+    if (!tp.meals.includes(meal) || (tp.uten && !ut.includes(tp.uten))) continue;
+    const s = {}; let ok = true;
+    for (const [k, list] of Object.entries(tp.need)) { const v = list.find(has); if (!v) { ok = false; break; } s[k] = v; }
+    if (!ok) continue;
+    for (const [k, list] of Object.entries(tp.opt || {})) { const v = list.find(n => has(n) && !Object.values(s).includes(n)); if (v) s[k] = v; }
+    const items = [], f = FOOD[s.prot];
+    const main = meal === "almuerzo" || meal === "cena";
+    let pg = clamp(protT * (f.t === "leg" ? .6 : main ? 1 : .85) / f.p * 100, 40, f.t === "leg" ? 300 : f.t === "dairy" ? (s.prot === "Leche" ? 300 : 250) : (s.prot === "Huevo" ? 150 : 200));
+    if (s.prot === "Huevo") pg = clamp(Math.round(pg / 50) * 50, 100, 150);
+    if (tp.pmax) pg = Math.min(pg, tp.pmax);
+    items.push([s.prot, pg]);
+    (tp.fixed ? tp.fixed(s) : []).forEach(x => items.push(x));
+    if (s.veg) items.push([s.veg, tp.vegG || 70]); if (s.veg2) items.push([s.veg2, 50]);
+    if (s.fr) items.push([s.fr, s.fr === "Banano" ? 120 : 150]);
+    if (s.fat) items.push([s.fat, s.fat === "Aguacate" ? 50 : 16]);
+    if (tp.oil && has("Aceite")) items.push(["Aceite", 5]);
+    if (s.carb) { const fc = FOOD[s.carb], m0 = macrosOf(items); const g = clamp((kcalT - m0.k) / fc.k * 100, s.carb === "Avena" ? 30 : 50, s.carb === "Avena" ? 80 : 320); items.splice(1, 0, [s.carb, Math.round(g / 5) * 5]); }
+    const val = v => typeof v === "function" ? v(s) : v;
+    out.push({title: tp.title(s), items, m: macrosOf(items), steps: tp.steps(s).filter(Boolean), time: tp.t, plate: val(tp.plate), tummy: val(tp.tummy), tag: tp.tag || "", src: "chef", key: tp.id});
+  }
+  return out;
+}
 function localRecipes(pantry, meal, t, meals){
   const has = n => pantry.includes(n);
   const kcalT = t.kcal / meals, protT = t.prot / meals;
@@ -935,7 +1068,8 @@ function localRecipes(pantry, meal, t, meals){
   const vegs = pantry.filter(n => FOOD[n]?.t === "veg");
   const fruits = pantry.filter(n => FOOD[n]?.t === "fruit");
   const fats = pantry.filter(n => FOOD[n]?.t === "fat");
-  const out = [];
+  const out = chefRecipes(pantry, meal, t, meals);
+  if (out.length >= 3) return out.slice(0, 5);
   const make = (prot, carb, vg, fr, title, method) => {
     const items = []; const steps = [];
     let pg = 0;
@@ -976,7 +1110,7 @@ function localRecipes(pantry, meal, t, meals){
     const title = prot ? `${PN[prot] || prot} ${m}${carb ? " con " + carb.toLowerCase() : ""}${vg.length ? " y " + vg[0].toLowerCase() : ""}` : `${carb} con ${vg.map(v => v.toLowerCase()).join(" y ") || "verduras"}`;
     const r = make(prot, carb, vg, null, title, methodFor(prot, carb, vg)); r.key = key; out.push(r);
   }
-  return out.slice(0, 3);
+  return out.slice(0, 5);
 }
 
 /* ============ Animaciones (cinemática 2D) ============ */
@@ -1119,16 +1253,9 @@ const P = {
    return {ankle: an, knee: kn, hip, ...T, ...arm(T.sh, hand, [-1, -.4]), footAng: shinFoot(kn, an, 25)};
  }},
  /* ---------- Tirón ---------- */
- pulldown:{lab:["Tira con los codos (1 s)","Regresa (2 s)"], d:[1.1,2], fig:"pulldown", path:"grip", f: k => {
-   const hip = [146, 152], a = lerp(-6, -14, ezc(k)), T = trunk(hip, a), ank = standAnkle(196), kn = knee(hip, ank, [1, -.3]);
-   const x = 150 + 14, g = [x, lerp(T.sh[1] - 70, T.sh[1] + 4, ezc(k))];
-   return {ankle: ank, knee: kn, hip, ...T, ...arm(T.sh, g, [-.5, 1])};
- }},
- pullup:{lab:["Sube con los codos (1 s)","Baja (2 s)"], d:[1.1,2], fig:"bar", f: k => {
-   const hand = [168, 22], shp = lp([166, 22 + 72], [156, 44], ezc(k)), a = lerp(-2, -14, ezc(k)), hip = [shp[0] - L.t * Math.sin(rad(a)), shp[1] + L.t * Math.cos(rad(a))];
-   const T = trunk(hip, a, 6), kn = dn(hip, L.th, 16), an = dn(kn, L.sh, -82);
-   return {ankle: an, knee: kn, hip, ...T, ...arm(T.sh, hand, [.4, 1]), footAng: shinFoot(kn, an, 30)};
- }},
+ /* Jalón y dominada: los codos bajan por los costados (plano frontal), así que se muestran de frente */
+ pulldown:{front:1, legs:"seat", fig:"f_pulldown", lab:["Codos a los bolsillos (1 s)","Sube controlando (2 s)"], d:[1.1,2], guideLab:"Codos hacia los bolsillos", fr: k => ({shY: 76, grip: {dx: 24, y: lerp(11, 88, ezc(k))}})},
+ pullup:{front:1, legs:"hang", fig:"f_bar", lab:["Sube con los codos (1 s)","Baja controlando (2 s)"], d:[1.1,2], guideLab:"Codos hacia los bolsillos", fr: k => ({shY: lerp(77, 25, ezc(k)), grip: {dx: 25, y: 14, abs: 1}})},
  cablerow:{lab:["Tira y junta omóplatos (1 s)","Regresa (2 s)"], d:[1.1,2], hold:.4, fig:"cablerow", path:"grip", f: k => {
    const hip = [104, 178], a = lerp(10, -4, ezc(k)), T = trunk(hip, a), ank = [196, 172], kn = knee(hip, ank, [0, -1]);
    const j = {hip, sh: T.sh}, bot = onTrunk(j, .42, 15), g = [lerp(186, bot[0], ezc(k)), bot[1]];
@@ -1141,7 +1268,7 @@ const P = {
    return {ankle: ank, knee: kn, hip: base.hip, sh: base.sh, head: base.head, ta: a, ...arm(base.sh, g, [-.6, -1])};
  }},
  /* ---------- Brazos y hombro ---------- */
- lateral:{front:1, A:{ab:12}, B:{ab:88}, lab:["Sube por los lados (1 s)","Baja (2–3 s)"], d:[1.1,2.4]},
+ lateral:{front:1, legs:"stand", fig:"f_db", lab:["Sube por los lados (1 s)","Baja (2–3 s)"], d:[1.1,2.4], guideLab:"Codos guían, hasta la altura del hombro", fr: k => ({shY: 62, ab: lerp(12, 88, k)})},
  curl:{lab:["Sube (1 s)","Baja (2–3 s)"], d:[1.1,2.4], fig:"none", path:"grip", f: k => {
    const ank = standAnkle(160), hip = [ank[0] - 1, ank[1] - L.sh - L.th], T = trunk(hip, 0), el = dn(T.sh, L.ua, 3);
    return {ankle: ank, knee: [ank[0], ank[1] - L.sh], hip, ...T, elbow: el, grip: dn(el, L.fa + L.hand, lerp(4, 145, ezc(k)))};
@@ -1235,18 +1362,32 @@ function drawBody(ctx, j, o){
   const T = seg(j.hip, j.sh, B.torso, true);
   const TH = seg(j.hip, j.knee, B.thigh), SH = seg(j.knee, j.ankle, B.shin), UA = seg(j.sh, j.elbow, B.uarm), FA = seg(j.elbow, j.hand, B.farm);
   const TH2 = seg(j.hip, j.knee2, B.thigh), SH2 = seg(j.knee2, j.ankle2, B.shin), UA2 = seg(j.sh, j.elbow2, B.uarm), FA2 = seg(j.elbow2, j.hand2, B.farm);
-  const shoe = (an, he, to) => { ctx.fillStyle = SHOE; ctx.strokeStyle = SHOE; ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(an[0], an[1] - 2); ctx.lineTo(he[0], he[1]); ctx.lineTo(to[0], to[1]); ctx.closePath(); ctx.fill(); ctx.stroke(); };
-  const handP = (w, g, col) => { ctx.strokeStyle = col; ctx.lineWidth = 6.4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(w[0], w[1]); ctx.lineTo(g[0], g[1]); ctx.stroke(); };
+  /* Zapatilla con suela y media; mano con palma y pulgar */
+  const shoe = (an, he, to, far) => {
+    const u = unit(he, to); let n = [-u[1], u[0]]; if ((an[0] - he[0]) * n[0] + (an[1] - he[1]) * n[1] < 0) n = [-n[0], -n[1]];
+    const P = (b, a, c) => add(add(b, mul(u, a)), mul(n, c)), L0 = Math.hypot(to[0] - he[0], to[1] - he[1]);
+    const col = far ? shade(SHOE, 1.12) : SHOE;
+    fillP([P(he, -1, 1), P(he, -1.5, 6.5), P(he, 3, 9.5), P(he, 9, 9), P(he, L0 * .62, 6.5), P(he, L0 - 1, 4), P(he, L0 + 1, 1.2), P(he, L0 - 2, -.4), P(he, 2, -.4)], col);
+    ctx.strokeStyle = far ? "#C9CFD2" : "#E3E7E9"; ctx.lineWidth = 1.8; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(...P(he, -.5, .4)); ctx.lineTo(...P(he, L0 - .5, .4)); ctx.stroke();
+    ctx.strokeStyle = far ? "#D5D9DB" : "#F1F3F4"; ctx.lineWidth = 3.2; ctx.beginPath(); ctx.moveTo(...P(he, 1.5, 10.6)); ctx.lineTo(...P(he, 8.5, 10.2)); ctx.stroke();
+  };
+  const handP = (w, g, col) => {
+    const d = Math.hypot(g[0] - w[0], g[1] - w[1]) || 1, u = unit(w, g), n = [-u[1], u[0]], c = lp(w, g, .5), r = o.sex === "f" ? 2.9 : 3.4;
+    ctx.save(); ctx.translate(c[0], c[1]); ctx.rotate(Math.atan2(u[1], u[0])); ctx.beginPath(); ctx.ellipse(0, 0, d / 2 + 1.6, r, 0, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.restore();
+    circ(add(lp(w, g, .42), mul(n, r * .7)), r * .55, col);
+  };
+  const shadeBack = (sg, t0 = .04, t1 = .96, dep = .32) => { ctx.save(); ctx.globalAlpha = .55; fillP(muscleShape(sg, "b", t0, t1, dep), shade(skin, .86)); ctx.restore(); };
   const legM = (th, sh, isFar, base, mode) => { mDraw(muscleShape(th, "f", .12, .9, .8), "quads", base, isFar, mode); mDraw(muscleShape(th, "b", .2, .88, .75), "hams", base, isFar, mode); mDraw(muscleShape(sh, "b", .06, .62, .9), "calf", base, isFar, mode); mDraw(muscleShape(sh, "f", .08, .6, .45), null, base, isFar, mode); };
   const armM = (ua, fa, isFar, base, mode) => { mDraw(muscleShape(ua, "f", .24, .9, .85), "biceps", base, isFar, mode); mDraw(muscleShape(ua, "b", .14, .88, .85), "triceps", base, isFar, mode); mDraw(muscleShape(fa, "f", .05, .55, .6), null, base, isFar, mode); };
   const glC = [j.hip[0] - T.n[0] * B.glute * .45 + (j.knee[0] - j.hip[0]) * .1, j.hip[1] - T.n[1] * B.glute * .45 + (j.knee[1] - j.hip[1]) * .1];
   const glC2 = [j.hip[0] - T.n[0] * B.glute * .45 + (j.knee2[0] - j.hip[0]) * .1, j.hip[1] - T.n[1] * B.glute * .45 + (j.knee2[1] - j.hip[1]) * .1];
   // Lado lejano (pierna y brazo de atrás)
   fillP(outline(TH2), far); circ(j.knee2, wAt(B.thigh, 1, "f") + .4, far); fillP(outline(SH2), far); circ(glC2, B.glute, far);
-  legM(TH2, SH2, true, farMus, "base"); fillP(outline(TH2, 0, .36), cloth2); circ(glC2, B.glute + .6, cloth2); legM(TH2, SH2, true, null, "hl"); shoe(j.ankle2, j.heel2, j.toe2);
+  legM(TH2, SH2, true, farMus, "base"); fillP(outline(TH2, 0, .36), cloth2); circ(glC2, B.glute + .6, cloth2); legM(TH2, SH2, true, null, "hl"); shoe(j.ankle2, j.heel2, j.toe2, true);
   fillP(outline(UA2), far); circ(j.elbow2, wAt(B.uarm, 1, "f"), far); fillP(outline(FA2), far); handP(j.hand2, j.grip2, far); armM(UA2, FA2, true, farMus, "base"); armM(UA2, FA2, true, null, "hl");
   // Cuerpo cercano
   fillP(outline(T), skin); circ(glC, B.glute, skin); fillP(outline(TH), skin); circ(j.knee, wAt(B.thigh, 1, "f") + .5, skin); fillP(outline(SH), skin);
+  shadeBack(T, .08, .92, .28); shadeBack(TH, .1, .9); shadeBack(SH, .05, .9);
   const torsoM = mode => { mDraw(muscleShape(T, "f", .66, .95, .75), "chest", mus, false, mode); mDraw(muscleShape(T, "f", .1, .58, .5), "abs", mus, false, mode); mDraw(muscleShape(T, "b", .38, .9, .7), "lats", mus, false, mode); mDraw(circlePts(glC, B.glute * .82), "glutes", mus, false, mode); };
   torsoM("base"); legM(TH, SH, false, mus, "base");
   fillP(outline(T, 0, .2), cloth); fillP(outline(TH, 0, .38), cloth); circ(glC, B.glute + .7, cloth);
@@ -1254,18 +1395,23 @@ function drawBody(ctx, j, o){
   torsoM("hl"); legM(TH, SH, false, null, "hl"); shoe(j.ankle, j.heel, j.toe);
   // Cabeza
   const u = unit(j.sh, j.head), n = [-u[1], u[0]], hc = j.head;
+  { const tu = unit(j.hip, j.sh), tn = T.n, fs = Math.sign(n[0] * tn[0] + n[1] * tn[1]) || 1, bk = mul(tn, -fs);
+    fillP([add(hc, add(mul(u, -6), mul(bk, 3.5))), add(hc, add(mul(u, -6), mul(bk, -2))), add(j.sh, add(mul(bk, -5), mul(tu, 1))), add(j.sh, add(mul(bk, 9), mul(tu, -3))), add(j.sh, add(mul(bk, 6), mul(tu, 4)))], skin); }
   ctx.strokeStyle = skin; ctx.lineWidth = B.neck * 2; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(j.sh[0] + n[0], j.sh[1] + n[1]); ctx.lineTo(hc[0] - u[0] * 5, hc[1] - u[1] * 5); ctx.stroke();
   const fa = Math.atan2(n[1], n[0]), sgn = Math.sign(n[0] * u[1] - n[1] * u[0]) || 1;
   if (o.sex === "f") { const pc = [hc[0] - n[0] * (B.head + 2) - u[0] * 4, hc[1] - n[1] * (B.head + 2) - u[1] * 4]; ctx.save(); ctx.translate(pc[0], pc[1]); ctx.rotate(Math.atan2(u[1], u[0]) + Math.PI / 2); ctx.beginPath(); ctx.ellipse(0, 3, 4.6, 9, 0, 0, 7); ctx.fillStyle = HAIR; ctx.fill(); ctx.restore(); }
   circ(hc, B.head, skin);
+  circ([hc[0] + n[0] * B.head * .38 - u[0] * B.head * .5, hc[1] + n[1] * B.head * .38 - u[1] * B.head * .5], B.head * .62, skin);
   const nose = [hc[0] + n[0] * (B.head - .5), hc[1] + n[1] * (B.head - .5)];
   ctx.beginPath(); ctx.moveTo(nose[0] + u[0] * 3, nose[1] + u[1] * 3); ctx.lineTo(nose[0] + n[0] * 3.2 - u[0] * 1.2, nose[1] + n[1] * 3.2 - u[1] * 1.2); ctx.lineTo(nose[0] - u[0] * 2.2, nose[1] - u[1] * 2.2); ctx.closePath(); ctx.fillStyle = skin; ctx.fill();
   circ([hc[0] + n[0] * 5.5 + u[0] * 2, hc[1] + n[1] * 5.5 + u[1] * 2], 1.2, HAIR);
+  ctx.strokeStyle = HAIR; ctx.lineWidth = 1.1; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(hc[0] + n[0] * 3.6 + u[0] * 4.3, hc[1] + n[1] * 3.6 + u[1] * 4.3); ctx.quadraticCurveTo(hc[0] + n[0] * 5.8 + u[0] * 5.4, hc[1] + n[1] * 5.8 + u[1] * 5.4, hc[0] + n[0] * 7.6 + u[0] * 4.9, hc[1] + n[1] * 7.6 + u[1] * 4.9); ctx.stroke();
+  ctx.save(); ctx.globalAlpha = .5; ctx.strokeStyle = skinD; ctx.beginPath(); ctx.moveTo(hc[0] + n[0] * 7.4 - u[0] * 5.4, hc[1] + n[1] * 7.4 - u[1] * 5.4); ctx.lineTo(hc[0] + n[0] * 9.2 - u[0] * 5, hc[1] + n[1] * 9.2 - u[1] * 5); ctx.stroke(); ctx.restore();
   circ([hc[0] - n[0] * 1.5, hc[1] - n[1] * 1.5], 2.3, skinD);
   const h0 = fa + sgn * .3 * Math.PI, h1 = fa + sgn * (o.sex === "f" ? 1.42 : 1.15) * Math.PI;
   ctx.beginPath(); ctx.arc(hc[0], hc[1], B.head + 1.5, h0, h1, sgn < 0); ctx.arc(hc[0], hc[1], B.head - (o.sex === "f" ? 2 : 3.4), h1, h0, sgn > 0); ctx.closePath(); ctx.fillStyle = HAIR; ctx.fill();
   // Brazo cercano
-  fillP(outline(UA), skin); circ(j.elbow, wAt(B.uarm, 1, "f") + .2, skin); fillP(outline(FA), skin); handP(j.hand, j.grip, skin);
+  fillP(outline(UA), skin); circ(j.elbow, wAt(B.uarm, 1, "f") + .2, skin); fillP(outline(FA), skin); shadeBack(UA, .1, .9, .3); shadeBack(FA, .05, .9, .3); handP(j.hand, j.grip, skin);
   armM(UA, FA, false, mus, "base");
   const dC = [j.sh[0] + (j.elbow[0] - j.sh[0]) * .14, j.sh[1] + (j.elbow[1] - j.sh[1]) * .14];
   fillP(circlePts(dC, B.delt), skin); mDraw(circlePts(dC, B.delt * .85), "delt", mus, false, "base");
@@ -1276,13 +1422,17 @@ function drawFigure(ctx, spec, k, effort, ex){
   const line = (a, b, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
   ctx.clearRect(0, 0, 320, 230);
   line([12, FLOOR + .5], [308, FLOOR + .5], 1.5, C.line);
-  const o = Object.assign(figOpts(), {hl: hlFor(ex), effort});
-  if (spec.front) { drawFront(ctx, spec, k, o); return; }
-  const j = finish(spec.f(k));
-  props(ctx, spec.fig, j, line, C, "back", spec);
-  drawBody(ctx, j, o);
-  props(ctx, spec.fig, j, line, C, "front", spec);
-  if (S.guides !== false) drawGuides(ctx, spec, j, C);
+  const o = Object.assign(figOpts(), {hl: hlFor(ex), effort}), z = fitZoom(spec, o);
+  ctx.save(); if (z !== 1) { ctx.translate(160, FLOOR); ctx.scale(z, z); ctx.translate(-160, -FLOOR); }
+  if (spec.front) drawFront(ctx, spec, k, o);
+  else {
+    const j = finish(spec.f(k));
+    props(ctx, spec.fig, j, line, C, "back", spec);
+    drawBody(ctx, j, o);
+    props(ctx, spec.fig, j, line, C, "front", spec);
+    if (S.guides !== false) drawGuides(ctx, spec, j, C);
+  }
+  ctx.restore();
 }
 /* Líneas guía y articulaciones (opcional): enseñan la alineación correcta */
 function drawGuides(ctx, spec, j, C){
@@ -1339,36 +1489,115 @@ function props(ctx, fig, j, line, C, layer, spec){
   if (pr === "handdb") db(j.grip);
   if (pr === "dbchest") db(add(j.grip, [0, 4]), 9);
 }
+/* Vista frontal: pose */
+function frontPose(spec, k, o){
+  const m = o.sex !== "f", B = BODY[o.sex] || BODY.m, cx = 160, q = spec.fr(k), shY = q.shY;
+  const shW = m ? 26 : 21, waW = m ? 18 : 13.5, hiW = m ? 18 : 21;
+  const arms = [-1, 1].map(sd => {
+    const sh = [cx + sd * (shW - 4), shY + 6];
+    let el, hd, gp;
+    if (q.grip) {
+      gp = [sh[0] + sd * q.grip.dx, q.grip.y];
+      const r = ik2(sh, gp, L.ua, L.fa + L.hand, [sd, .75]); el = r.m; gp = r.e; hd = add(el, mul(unit(el, gp), L.fa));
+    } else {
+      const ab = rad(q.ab); el = [sh[0] + sd * L.ua * Math.sin(ab), sh[1] + L.ua * Math.cos(ab)];
+      const ab2 = ab - rad(12); hd = [el[0] + sd * L.fa * Math.sin(ab2), el[1] + L.fa * Math.cos(ab2)]; gp = add(hd, mul(unit(el, hd), L.hand * .6));
+    }
+    return {sd, sh, el, hd, gp};
+  });
+  return {m, B, cx, shY, shW, waW, hiW, hipY: shY + 58, arms, q};
+}
 function drawFront(ctx, spec, k, o){
-  const C = themeColors, B = BODY[o.sex] || BODY.m, skin = SKIN[o.skin] || SKIN.medio, mus = shade(skin, .87), m = o.sex !== "f";
-  const ab = rad(spec.A.ab + (spec.B.ab - spec.A.ab) * k), cx = 160;
-  const shW = m ? 26 : 21, waW = m ? 18 : 13.5, hiW = m ? 18 : 21, shY = 62, waY = 96, hiY = 120;
+  const C = themeColors, skin = SKIN[o.skin] || SKIN.medio, mus = shade(skin, .88), skinD = shade(skin, .72), skinS = shade(skin, .93), hl = o.hl;
+  const F = frontPose(spec, k, o), {m, B, cx, shY, shW, waW, hiW, hipY} = F;
   const poly = (pts, fill) => { smooth(ctx, pts); ctx.fillStyle = fill; ctx.fill(); };
-  const cap = (a, b, w1, w2) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, n = [-dy / l, dx / l], mw = (w1 + w2) / 2 * 1.08, mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; return [[a[0] + n[0] * w1, a[1] + n[1] * w1], [mid[0] + n[0] * mw, mid[1] + n[1] * mw], [b[0] + n[0] * w2, b[1] + n[1] * w2], [b[0] - n[0] * w2, b[1] - n[1] * w2], [mid[0] - n[0] * mw, mid[1] - n[1] * mw], [a[0] - n[0] * w1, a[1] - n[1] * w1]]; };
+  const circ = (p, r, fill) => { ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 7); ctx.fillStyle = fill; ctx.fill(); };
+  const ell = (p, rx, ry, fill, rot = 0) => { ctx.beginPath(); ctx.ellipse(p[0], p[1], rx, ry, rot, 0, 7); ctx.fillStyle = fill; ctx.fill(); };
+  const line = (a, b, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
+  const cap = (a, b, w1, w2, bulge = 1.08) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, n = [-dy / l, dx / l], mw = (w1 + w2) / 2 * bulge, mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; return [[a[0] + n[0] * w1, a[1] + n[1] * w1], [mid[0] + n[0] * mw, mid[1] + n[1] * mw], [b[0] + n[0] * w2, b[1] + n[1] * w2], [b[0] - n[0] * w2, b[1] - n[1] * w2], [mid[0] - n[0] * mw, mid[1] - n[1] * mw], [a[0] - n[0] * w1, a[1] - n[1] * w1]]; };
+  const hlFill = (pts, key) => { const lv = hl[key] || 0; if (!lv) return; ctx.save(); ctx.globalAlpha = lv >= 1 ? .82 + .18 * o.effort : .5 + .1 * o.effort; if (lv >= 1) { ctx.shadowColor = C.mus; ctx.shadowBlur = 3 + 12 * o.effort; } poly(pts, C.mus); ctx.restore(); };
+  const rect = (x, y, w, h) => { ctx.fillStyle = C.prop; ctx.fillRect(x, y, w, h); };
+  const shoeF = (an, sd, back) => { ell([an[0] + sd * 1.5, an[1] + 4], 6.4, back ? 3.2 : 4.4, SHOE); ctx.fillStyle = "#DCE1E3"; ctx.fillRect(an[0] + sd * 1.5 - 6, an[1] + (back ? 5.5 : 7.4), 12, 1.6); ell([an[0], an[1] - 1], 4.2, 2.2, "#EEF1F2"); };
+  /* Fondo: máquina */
+  if (spec.fig === "f_pulldown") { rect(cx - 7, 0, 14, FLOOR); rect(cx - 34, hipY + 17, 68, 6); rect(cx - 4, hipY + 23, 8, FLOOR - hipY - 23); }
+  if (spec.fig === "f_bar") { rect(34, 14, 6, FLOOR - 14); rect(280, 14, 6, FLOOR - 14); }
+  /* Piernas */
   for (const sd of [-1, 1]) {
-    const h = [cx + sd * (hiW - 9), hiY + 6], kn = [cx + sd * (hiW - 8), 162], an = [cx + sd * (hiW - 7), 200];
-    poly(cap(h, kn, m ? 10 : 10.5, 6.5), skin); poly(cap(kn, an, 6.2, 3.8), skin); ctx.beginPath(); ctx.arc(kn[0], kn[1], 6.6, 0, 7); ctx.fillStyle = skin; ctx.fill();
-    ctx.strokeStyle = SHOE; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(an[0], an[1] + 2); ctx.lineTo(an[0] + sd * 4, 204); ctx.stroke();
+    const h = [cx + sd * (hiW - 9), hipY + 6];
+    if (F.q && spec.legs === "seat") {
+      const kn = [cx + sd * (hiW + 1), hipY + 16], an = [kn[0] + sd, FLOOR - 7];
+      poly(cap(kn, an, 6.4, 3.8), skin); hlFill(cap(add(kn, [0, 4]), add(kn, [0, 26]), 3.6, 2.2), "calf");
+      ell(lp(h, kn, .5), m ? 11.5 : 12, 9.5, skin); hlFill(circlePts(lp(h, kn, .55), m ? 8 : 8.5, 6.5), "quads"); circ(kn, 7, skin); shoeF(an, sd);
+    } else if (spec.legs === "hang") {
+      const kn = [cx + sd * (hiW - 10), hipY + 38], an = [cx - sd * 3, kn[1] + 24];
+      poly(cap(kn, an, 6, 4), skinS); shoeF(an, sd, true);
+      poly(cap(h, kn, m ? 10 : 10.5, 6.6), skin); hlFill(cap(lp(h, kn, .2), lp(h, kn, .85), 6.4, 4.6), "quads"); circ(kn, 6.6, skin);
+    } else {
+      const kn = [cx + sd * (hiW - 8), shY + 100], an = [cx + sd * (hiW - 7), shY + 138];
+      poly(cap(h, kn, m ? 10 : 10.5, 6.5), skin); hlFill(cap(lp(h, kn, .2), lp(h, kn, .88), 6.4, 4.4), "quads");
+      poly(cap(kn, an, 6.2, 3.8), skin); hlFill(cap(lp(kn, an, .1), lp(kn, an, .6), 4.6, 3.4), "calf"); circ(kn, 6.6, skin); shoeF(an, sd);
+    }
   }
-  poly([[cx - shW, shY], [cx + shW, shY], [cx + waW, waY], [cx + hiW, hiY], [cx + hiW - 2, hiY + 14], [cx - hiW + 2, hiY + 14], [cx - hiW, hiY], [cx - waW, waY]], skin);
-  for (const sd of [-1, 1]) poly(circlePts([cx + sd * 9, shY + 13], m ? 10 : 8, m ? 7 : 6), mus);
-  poly(circlePts([cx, 92], 8, 14), mus);
-  poly([[cx - hiW - 1, hiY - 4], [cx + hiW + 1, hiY - 4], [cx + hiW + 4, hiY + 26], [cx + 4, hiY + 26], [cx, hiY + 12], [cx - 4, hiY + 26], [cx - hiW - 4, hiY + 26]], C.cloth);
-  if (!m) poly([[cx - shW + 3, shY + 8], [cx + shW - 3, shY + 8], [cx + waW + 2, shY + 30], [cx - waW - 2, shY + 30]], C.cloth);
-  ctx.fillStyle = skin; ctx.fillRect(cx - B.neck, shY - 14, B.neck * 2, 16);
-  if (!m) { poly([[cx - B.head - 2, shY - 26], [cx - B.head + 4, shY - 26], [cx - B.head + 3, shY - 4], [cx - B.head - 3, shY - 4]], HAIR); poly([[cx + B.head + 2, shY - 26], [cx + B.head - 4, shY - 26], [cx + B.head - 3, shY - 4], [cx + B.head + 3, shY - 4]], HAIR); }
-  ctx.beginPath(); ctx.arc(cx, shY - 21, B.head, 0, 7); ctx.fillStyle = skin; ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, shY - 21, B.head + 1.5, Math.PI * (m ? 1.08 : 1.0), Math.PI * (m ? 1.92 : 2.0)); ctx.closePath(); ctx.fillStyle = HAIR; ctx.fill();
+  /* Tronco */
+  const torso = [[cx - B.neck - 1, shY - 4], [cx + B.neck + 1, shY - 4], [cx + shW - 5, shY + 1], [cx + shW, shY + 9], [cx + shW - 3, shY + 22], [cx + waW, shY + 37], [cx + hiW, hipY], [cx + hiW - 2, hipY + 14], [cx - hiW + 2, hipY + 14], [cx - hiW, hipY], [cx - waW, shY + 37], [cx - shW + 3, shY + 22], [cx - shW, shY + 9], [cx - shW + 5, shY + 1]];
+  poly(torso, skin);
   for (const sd of [-1, 1]) {
-    const sh = [cx + sd * (shW - 3), shY + 5];
-    const el = [sh[0] + sd * L.ua * Math.sin(ab), sh[1] + L.ua * Math.cos(ab)], ab2 = ab - rad(14);
-    const hd = [el[0] + sd * L.fa * Math.sin(ab2), el[1] + L.fa * Math.cos(ab2)];
-    poly(cap(sh, el, m ? 6.6 : 5.2, 4.6), skin); poly(cap(el, hd, 4.4, 2.9), skin);
-    const dc = [sh[0] + (el[0] - sh[0]) * .12, sh[1] + (el[1] - sh[1]) * .12];
-    poly(circlePts(dc, B.delt + 1), skin);
-    ctx.save(); ctx.globalAlpha = .82 + .18 * o.effort; ctx.shadowColor = C.mus; ctx.shadowBlur = 3 + 12 * o.effort; poly(circlePts(dc, B.delt), C.mus); ctx.restore();
-    ctx.fillStyle = C.prop; ctx.fillRect(hd[0] - 5, hd[1] - 8, 10, 16);
+    const lat = [[cx + sd * (shW - 6), shY + 14], [cx + sd * (shW - 1), shY + 19], [cx + sd * (waW + 1.5), shY + 37], [cx + sd * (waW - 3), shY + 40], [cx + sd * (shW - 11), shY + 24]];
+    poly(lat, shade(skin, .9)); hlFill(lat, "lats");
+    const pec = circlePts([cx + sd * 9.5, shY + 14], m ? 10.5 : 8, m ? 7 : 6); poly(pec, mus); hlFill(pec, "chest");
   }
+  const absP = circlePts([cx, shY + 39], m ? 8 : 7, 13.5); poly(absP, mus); hlFill(absP, "abs");
+  if (m) { ctx.save(); ctx.globalAlpha = .25; line([cx, shY + 28], [cx, shY + 51], 1, skinD); line([cx - 6, shY + 34], [cx + 6, shY + 34], 1, skinD); line([cx - 6, shY + 42], [cx + 6, shY + 42], 1, skinD); ctx.restore(); }
+  poly([[cx - hiW - 1, hipY - 5], [cx + hiW + 1, hipY - 5], [cx + hiW + 4, hipY + (spec.legs === "seat" ? 18 : 26)], [cx + 4, hipY + (spec.legs === "seat" ? 18 : 26)], [cx, hipY + 12], [cx - 4, hipY + (spec.legs === "seat" ? 18 : 26)], [cx - hiW - 4, hipY + (spec.legs === "seat" ? 18 : 26)]], C.cloth);
+  line([cx - hiW - 1, hipY - 4], [cx + hiW + 1, hipY - 4], 2.2, C.cloth2);
+  if (!m) { poly([[cx - shW + 4, shY + 7], [cx + shW - 4, shY + 7], [cx + waW + 2, shY + 30], [cx - waW - 2, shY + 30]], C.cloth); }
+  if (spec.fig === "f_pulldown") { line([cx - 36, hipY + 9], [cx + 36, hipY + 9], 9, C.prop); ctx.save(); ctx.globalAlpha = .35; line([cx - 36, hipY + 7], [cx + 36, hipY + 7], 2, C.bg); ctx.restore(); }
+  /* Cuello, trapecio y cabeza */
+  poly([[cx - B.neck, shY - 14], [cx + B.neck, shY - 14], [cx + B.neck + 1, shY - 3], [cx + B.neck + 10, shY + 2], [cx - B.neck - 10, shY + 2], [cx - B.neck - 1, shY - 3]], skin);
+  ctx.save(); ctx.globalAlpha = .35; line([cx - 3, shY - 4], [cx - 1, shY + 1], 1, skinD); line([cx + 3, shY - 4], [cx + 1, shY + 1], 1, skinD); ctx.restore();
+  const hc = [cx, shY - 22];
+  if (!m) { ell([hc[0] - B.head + 1, hc[1] + 6], 4, 9, HAIR); ell([hc[0] + B.head - 1, hc[1] + 6], 4, 9, HAIR); }
+  for (const sd of [-1, 1]) ell([hc[0] + sd * (B.head - .5), hc[1] + 1], 2.4, 3.6, skinD);
+  ell(hc, B.head - 1.2, B.head + 1, skin);
+  ell([hc[0], hc[1] + 6], B.head - 4, 5, skin);
+  ctx.beginPath(); ctx.ellipse(hc[0], hc[1] - 1, B.head + .6, B.head + 2, 0, Math.PI * (m ? 1.06 : .98), Math.PI * (m ? 1.94 : 2.02)); ctx.closePath(); ctx.fillStyle = HAIR; ctx.fill();
+  if (!m) ell([hc[0], hc[1] - B.head - 1], 4.5, 3.4, HAIR);
+  for (const sd of [-1, 1]) { circ([hc[0] + sd * 3.8, hc[1] + 1], 1.1, HAIR); line([hc[0] + sd * 2.4, hc[1] - 2.4], [hc[0] + sd * 5.4, hc[1] - 2.8], 1.1, HAIR); }
+  ctx.save(); ctx.globalAlpha = .55; line([hc[0], hc[1] + 2], [hc[0] - .6, hc[1] + 5], 1, skinD); line([hc[0] - 2.2, hc[1] + 8], [hc[0] + 2.2, hc[1] + 8], 1.1, skinD); ctx.restore();
+  /* Brazos */
+  F.arms.forEach(a => {
+    poly(cap(a.sh, a.el, m ? 6.8 : 5.4, 4.6), skin); hlFill(cap(lp(a.sh, a.el, .25), lp(a.sh, a.el, .9), m ? 4.4 : 3.6, 3), "biceps");
+    poly(cap(a.el, a.hd, 4.6, 3), skin); circ(a.el, 4.5, skin);
+    const dc = lp(a.sh, a.el, .1); circ(dc, B.delt + 1, skin); hlFill(circlePts(dc, B.delt), "delt");
+  });
+  /* Barra o mancuernas (delante del cuerpo) y manos */
+  const gL = F.arms[0].gp, gR = F.arms[1].gp;
+  if (spec.fig === "f_pulldown") { const y = (gL[1] + gR[1]) / 2; line([cx, y], [cx, 0], 1.6, C.prop); line([gL[0] - 9, y + 6], [gL[0] - 4, y], 4, C.prop); line([gL[0] - 4, y], [gR[0] + 4, y], 4, C.prop); line([gR[0] + 4, y], [gR[0] + 9, y + 6], 4, C.prop); }
+  if (spec.fig === "f_bar") line([34, 14], [286, 14], 5, C.prop);
+  F.arms.forEach(a => {
+    const fc = lp(a.hd, a.gp, .45), ang = Math.atan2(a.gp[1] - a.hd[1], a.gp[0] - a.hd[0]);
+    if (spec.fig === "f_db") { const u = unit(a.el, a.hd), n = [-u[1], u[0]]; line(add(fc, mul(n, -9)), add(fc, mul(n, 9)), 3, C.prop); for (const s2 of [-1, 1]) { ctx.save(); ctx.translate(...add(fc, mul(n, s2 * 9))); ctx.rotate(Math.atan2(n[1], n[0])); ctx.fillStyle = C.prop; ctx.fillRect(-2.5, -5.5, 5, 11); ctx.restore(); } }
+    ell(fc, 4.6, 3.8, skin, ang); ctx.save(); ctx.globalAlpha = .4; ell(add(fc, [0, 1.2]), 3.4, 1.6, skinD, ang); ctx.restore();
+  });
+  /* Guías */
+  if (S.guides !== false) {
+    const dash = (pts, col, w = 1.6) => { ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.restore(); };
+    for (const side of [0, 1]) { const pts = []; for (let i = 0; i <= 16; i++) { const a = frontPose(spec, i / 16, o).arms[side]; pts.push(add(F.arms[side].sh, [a.el[0] - a.sh[0], a.el[1] - a.sh[1]])); } dash(pts, C.acc, 2); const e = pts[16], p = pts[13], u = unit(p, e), n = [-u[1], u[0]]; ctx.beginPath(); ctx.moveTo(e[0] + u[0] * 4, e[1] + u[1] * 4); ctx.lineTo(e[0] - u[0] * 4 + n[0] * 4, e[1] - u[1] * 4 + n[1] * 4); ctx.lineTo(e[0] - u[0] * 4 - n[0] * 4, e[1] - u[1] * 4 - n[1] * 4); ctx.closePath(); ctx.fillStyle = C.acc; ctx.fill(); }
+    ctx.save(); ctx.font = "600 10.5px system-ui, sans-serif"; ctx.fillStyle = C.acc; ctx.textAlign = "left"; ctx.fillText(spec.guideLab || "Trayectoria de los codos", 12, FLOOR - 8); ctx.restore();
+    ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.bg; ctx.fillStyle = C.ink;
+    F.arms.forEach(a => [a.sh, a.el, a.hd].forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 2.6, 0, 7); ctx.fill(); ctx.stroke(); })); ctx.restore();
+  }
+}
+/* Encuadre: si el movimiento se sale por arriba, aleja la cámara (anclada al suelo) */
+function fitZoom(spec, o){
+  const key = o.sex; spec._z = spec._z || {}; if (spec._z[key] != null) return spec._z[key];
+  let minY = Infinity;
+  for (let i = 0; i <= 12; i++) {
+    const k = i / 12;
+    if (spec.front) { const F = frontPose(spec, k, o); minY = Math.min(minY, F.shY - 22 - F.B.head - 4, ...F.arms.map(a => Math.min(a.gp[1], a.el[1]) - 7)); }
+    else { const j = finish(spec.f(k)); minY = Math.min(minY, j.head[1] - 15, j.grip[1] - 9, j.grip2[1] - 9, j.elbow[1] - 6, j.bar ? j.bar[1] - 20 : Infinity); }
+  }
+  return spec._z[key] = minY < 4 ? (FLOOR - 4) / (FLOOR - minY) : 1;
 }
 let animRaf = 0, currentGuideEx = null;
 function startAnim(canvas, ex, phaseEl){
@@ -1587,16 +1816,17 @@ function render(){
 }
 function renderWelcome(){
   $("#view").innerHTML = `<div class="stack">
-    <div class="eyebrow">Tu entrenador y nutricionista personal</div>
-    <h1 style="font-size:40px">Entrena con un plan que progresa contigo</h1>
-    <p class="muted">Responde 6 pasos y armamos un plan con el equipo que de verdad tienes, basado en lo que dice la evidencia sobre fuerza, músculo y pérdida de grasa.</p>
+    <div class="row" style="gap:12px;flex-wrap:nowrap"><svg class="logo big" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><path d="M45.6 18.9A19 19 0 1 0 51 34.5" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round"/><path d="M30 32.5h19" stroke="var(--go)" stroke-width="3" stroke-linecap="round"/><rect x="28.6" y="28" width="3" height="9" rx="1.3" fill="var(--go)"/><rect x="32.3" y="25" width="3.6" height="15" rx="1.5" fill="var(--go)"/><rect x="43.4" y="25" width="3.6" height="15" rx="1.5" fill="var(--go)"/><rect x="47.7" y="28" width="3" height="9" rx="1.3" fill="var(--go)"/></svg><div><div class="eyebrow">Gymnós · tu coach en el bolsillo</div><div class="small muted">Entrenador y nutricionista personal, sin mensualidad</div></div></div>
+    <h1 style="font-size:40px">Entrena con cabeza. Progresa cada semana.</h1>
+    <p class="muted">En 6 pasos armamos tu plan con el equipo que de verdad tienes y con lo que dice la ciencia del entrenamiento. Después, cada serie que registras ajusta la siguiente.</p>
     <div class="card"><canvas class="anim" id="wAnim" aria-label="Animación de ejemplo: sentadilla"></canvas><div class="phase" id="wPhase"></div></div>
     <ul class="clean">
-      <li><b>Plan a tu medida:</b> gimnasio, casa o al aire libre, solo con las máquinas que marques.</li>
-      <li><b>Progresión automática:</b> te dice cuándo subir peso según tus series registradas.</li>
-      <li><b>Técnica:</b> animación, dónde sentirlo, errores comunes y "si lo sientes aquí, corrige esto".</li>
-      <li><b>Comida realista:</b> recetas con lo que tienes en la cocina.</li>
-      <li><b>Progreso:</b> peso, medidas y fuerza estimada con tendencias.</li>
+      <li><b>Tu plan, tu equipo:</b> gimnasio, casa o parque, solo con las máquinas que marques. ¿Máquina ocupada? Te da otra para el mismo músculo.</li>
+      <li><b>Progresión inteligente:</b> sabe cuándo subir peso, cuándo sostener y cuándo descansar.</li>
+      <li><b>Técnica que se entiende:</b> animaciones fieles al movimiento, dónde sentirlo y "si lo sientes aquí, corrige esto".</li>
+      <li><b>Cocina de deportista:</b> recetas rápidas, sabrosas y fáciles de digerir con lo que tienes en la nevera.</li>
+      <li><b>Para cada etapa:</b> principiantes, 60+, embarazo y posparto, con una o dos sesiones al día.</li>
+      <li><b>Gratis y sin internet:</b> funciona en el gimnasio aunque no haya señal.</li>
     </ul>
     <button class="btn primary block big" id="startOb">Crear mi plan</button>
     <p class="small muted">Esta app educa y acompaña; no reemplaza la valoración de un profesional de salud.</p></div>`;
@@ -1778,10 +2008,10 @@ $("#restAdd").addEventListener("click", () => { restEnd += 30000; tickRest(); })
 function renderPlan(){
   const p = S.profile, ps = planState(), g = GOALS[p.goal], sp = special(p), wds = p.wdays || defaultWdays(p.days);
   const vol = weeklyVolume(ps.plan, p, Math.min(ps.week, 4)), maxV = 24;
-  const tw = isTwice(p), evTrain = gcalLink(tw ? "Entreno 1 · Coach de bolsillo" : "Entreno · Coach de bolsillo", `Sesión de ${p.minutes} min. Abre Coach de bolsillo y toca "Iniciar rutina guiada".`, wds, p.time || "18:00", p.minutes);
-  const evTrain2 = tw ? gcalLink("Entreno 2 · Coach de bolsillo", `2ª sesión del día, ${p.minutes} min. ${p.twice === "cardio" ? "Cardio y core." : "Trabaja otros músculos que la 1ª."} Abre Coach de bolsillo y toca "Iniciar rutina guiada".`, wds, p.time2 || "13:00", p.minutes) : "";
-  const evWeigh = gcalLink("Pesaje y pasos · Coach de bolsillo", "Pésate en ayunas y registra peso, cintura y pasos en la pestaña Progreso.", [wds[0]], "07:00", 10);
-  const evShop = gcalLink("Compras y preparación de comidas", "Abre Coach de bolsillo > Comida > Lista de compras.", [7], "10:00", 60);
+  const tw = isTwice(p), evTrain = gcalLink(tw ? "Entreno 1 · Gymnós" : "Entreno · Gymnós", `Sesión de ${p.minutes} min. Abre Gymnós y toca "Iniciar rutina guiada".`, wds, p.time || "18:00", p.minutes);
+  const evTrain2 = tw ? gcalLink("Entreno 2 · Gymnós", `2ª sesión del día, ${p.minutes} min. ${p.twice === "cardio" ? "Cardio y core." : "Trabaja otros músculos que la 1ª."} Abre Gymnós y toca "Iniciar rutina guiada".`, wds, p.time2 || "13:00", p.minutes) : "";
+  const evWeigh = gcalLink("Pesaje y pasos · Gymnós", "Pésate en ayunas y registra peso, cintura y pasos en la pestaña Progreso.", [wds[0]], "07:00", 10);
+  const evShop = gcalLink("Compras y preparación de comidas", "Abre Gymnós > Comida > Lista de compras.", [7], "10:00", 60);
   $("#view").innerHTML = `<div class="section"><div class="eyebrow">Plan actual</div><h1>${esc(g.l)} · ${p.days} días${tw ? " · 2 sesiones al día" : ""}</h1>
     <p class="muted">${esc({gym:"Gimnasio", home:"Casa", outdoor:"Al aire libre"}[p.place])} · ${tw ? `2 × ${p.minutes}` : p.minutes} min · nivel ${esc(p.level)} · ${wds.map(w => WD[w - 1]).join(", ")} a las ${esc(p.time || "18:00")}${tw ? ` y ${esc(p.time2 || "13:00")}` : ""}</p>
     ${tw ? `<p class="small muted">${p.twice === "cardio" ? "La 1ª sesión es tu rutina de fuerza y la 2ª, cardio suave y core." : "Cada día se reparte en dos sesiones que no cargan el mismo músculo. El volumen semanal es el mismo que en una sola sesión."} Calienta 5 minutos antes de cada una y come algo con proteína entre las dos. La semana cuenta como cumplida al terminar la 2ª sesión de cada día.</p>` : ""}
@@ -1818,12 +2048,12 @@ function renderPlan(){
   $("#editP").addEventListener("click", () => startOnboarding(true));
   if (window.PWA_MODE) bindPwaSection();
   $("#resetSw").addEventListener("click", () => { S.profile.swaps = {}; save(); renderPlan(); });
-  $("#expJson").addEventListener("click", () => saveFile(`coach-de-bolsillo-${todayISO()}.json`, JSON.stringify({app:"coach-de-bolsillo", v:3, exported:todayISO(), S, photos:PHOTOS}, null, 1)));
+  $("#expJson").addEventListener("click", () => saveFile(`gymnos-${todayISO()}.json`, JSON.stringify({app:"coach-de-bolsillo", v:3, exported:todayISO(), S, photos:PHOTOS}, null, 1)));
   $("#expCsv").addEventListener("click", () => { const rows = [["fecha","sesion","ejercicio","serie","kg","reps","rir"]]; S.logs.forEach(s => s.entries.forEach(e => e.sets.forEach((x, k) => rows.push([s.date, s.day, EXI[e.id]?.n || e.id, k + 1, x.kg ?? "", x.reps, x.rir ?? ""])))); saveFile(`sesiones-${todayISO()}.csv`, rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")); });
   $("#impJson").addEventListener("change", async e => {
     const f = e.target.files[0]; if (!f) return; let obj = null; try { obj = JSON.parse(await f.text()); } catch(err){}
     const box = $("#impBox");
-    if (!obj || !obj.S || !obj.S.profile) { box.innerHTML = `<p class="note bad small">Ese archivo no es una copia de Coach de bolsillo.</p>`; return; }
+    if (!obj || !obj.S || !obj.S.profile) { box.innerHTML = `<p class="note bad small">Ese archivo no es una copia de Gymnós.</p>`; return; }
     box.innerHTML = `<div class="note warn stack" style="gap:8px"><span>La copia del ${esc(obj.exported || "")} tiene ${obj.S.logs?.length || 0} sesiones. Reemplazará tus datos actuales.</span><div class="row"><button class="btn small" id="impNo">Cancelar</button><button class="btn small primary" id="impYes">Restaurar</button></div></div>`;
     $("#impNo").onclick = () => box.innerHTML = "";
     $("#impYes").onclick = async () => { S = Object.assign(freshState(), obj.S); PHOTOS = obj.photos || []; savePhotosLocal(); S.updatedAt = Date.now(); lsSet(LS_KEY, S); await Cloud.pushAll(); for (const ph of PHOTOS) Cloud.pushPhoto(ph); toast("Copia restaurada"); go("hoy"); };
@@ -1961,7 +2191,7 @@ function renderNut(){
     <div class="section book"><div class="row between"><h2>Mi recetario</h2><span class="chip acc" id="bookN">${S.recipes.length}</span></div>
       ${S.recipes.length > 3 ? `<label class="field">Buscar en mi recetario<input id="bookQ" placeholder="nombre o ingrediente"></label>` : ""}
       <div class="stack" style="gap:8px" id="bookList">${bookHTML()}</div></div>
-    <div class="section"><h2>¿Qué tienes a la mano?</h2><p class="small muted">Marca lo que tienes o consigues fácil y barato. Solo usamos eso.</p>
+    <div class="section"><h2>¿Qué tienes a la mano?</h2><p class="small muted">Marca lo que tienes o consigues fácil y barato. Solo usamos eso, más lo básico de cualquier cocina: sal, pimienta, ajo, limón, comino, pimentón, orégano, canela y cilantro.</p>
       ${FOOD_GROUPS.map(([g, items]) => `<div><div class="eyebrow" style="margin-bottom:6px">${g}</div><div class="opts">${items.map(n => `<label class="opt"><input type="checkbox" name="pan" value="${esc(n)}" ${S.pantry.includes(n) ? "checked" : ""}><span>${esc(n)}</span></label>`).join("")}</div></div>`).join("")}
       <label class="field">Otros ingredientes (separados por coma)<input id="extraIng" value="${esc(S.extraIng || "")}" placeholder="ej.: mazorca, ajo, cilantro, limón"></label>
       <div><div class="eyebrow" style="margin-bottom:6px">Cocina con</div><div class="opts">${["estufa","horno","microondas","licuadora","freidora de aire"].map(u => `<label class="opt"><input type="checkbox" name="ut" value="${u}" ${S.utensils.includes(u) ? "checked" : ""}><span>${u[0].toUpperCase() + u.slice(1)}</span></label>`).join("")}</div></div>
@@ -1995,12 +2225,14 @@ function recipeBody(r){
   return `<div class="macros"><span><b>${fmt(m.k, 0)}</b> kcal</span><span><b>${fmt(m.p, 0)}</b> g proteína</span><span><b>${fmt(m.c, 0)}</b> g carb.</span><span><b>${fmt(m.f, 0)}</b> g grasa</span>${r.time ? `<span><b>${r.time}</b> min</span>` : ""}</div>
     <div><div class="eyebrow" style="margin-bottom:4px">Ingredientes (1 porción)</div><ul class="clean">${r.items.map(([n, g]) => `<li>${esc(n)}: ${esc(typeof g === "number" ? qty(n, g) : g)}</li>`).join("")}</ul></div>
     <div><div class="eyebrow" style="margin-bottom:4px">Preparación</div><ol class="steps">${r.steps.map(x => `<li>${esc(x)}</li>`).join("")}</ol></div>
+    ${r.plate ? `<p class="small"><b>Emplatado:</b> ${esc(r.plate)}</p>` : ""}
+    ${r.tummy ? `<p class="small"><b>Para tu estómago:</b> ${esc(r.tummy)}</p>` : ""}
     ${r.why ? `<p class="small muted">${esc(r.why)}</p>` : ""}`;
 }
 const isSaved = r => S.recipes.some(x => x.title === r.title && JSON.stringify(x.items) === JSON.stringify(r.items));
 function recipeCard(r, idx){
   const saved = isSaved(r);
-  return `<article class="card recipe stack" style="gap:10px"><div class="row between" style="align-items:flex-start"><h3 style="min-width:0;flex:1">${esc(r.title)}</h3><span class="chip ${r.ai ? "acc" : ""}">${r.ai ? "Idea de IA" : "Calculada para ti"}</span></div>
+  return `<article class="card recipe stack" style="gap:10px"><div class="row between" style="align-items:flex-start"><h3 style="min-width:0;flex:1">${esc(r.title)}</h3><span class="chip ${r.ai ? "acc" : ""}">${r.ai ? "Idea de IA" : r.tag ? esc(r.tag) : "Calculada para ti"}</span></div>
     ${recipeBody(r)}
     <button class="btn ${saved ? "" : "primary"}" data-save="${idx}" ${saved ? "disabled" : ""}>${saved ? "Guardada en tu recetario ✓" : "Guardar en mi recetario"}</button></article>`;
 }
@@ -2024,7 +2256,7 @@ function showLocal(keepAI){
   box.innerHTML = `<h2 style="margin-top:6px">Recetas para ti</h2>` + (shownRecipes.length ? shownRecipes.map((r, i) => recipeCard(r, i)).join("") : `<div class="note warn">Con lo marcado no alcanza para una comida completa. Agrega una proteína (huevo, fríjol, atún…) y un alimento de energía.</div>`) + `<div id="aiBox"></div>`;
   box.querySelectorAll("[data-save]").forEach(b => b.addEventListener("click", () => {
     const r = shownRecipes[+b.dataset.save]; if (!r || isSaved(r)) return;
-    S.recipes.unshift({id: "r" + Date.now().toString(36), title: r.title, items: r.items, steps: r.steps, m: r.m, time: r.time || null, why: r.why || "", ai: !!r.ai, savedAt: todayISO()});
+    S.recipes.unshift({id: "r" + Date.now().toString(36), title: r.title, items: r.items, steps: r.steps, m: r.m, time: r.time || null, why: r.why || "", plate: r.plate || "", tummy: r.tummy || "", ai: !!r.ai, savedAt: todayISO()});
     save("recipes"); lsSet(LS_KEY, S);
     b.textContent = "Guardada en tu recetario ✓"; b.disabled = true; b.classList.remove("primary"); refreshBook();
   }));
@@ -2036,15 +2268,15 @@ async function genAI(){
   let sample = null; try { sample = window.claude && claude.use ? await claude.use("sample") : null; } catch(e){}
   if (!sample) { box.innerHTML = `<div class="note">Las ideas con IA no están disponibles en esta vista. Las recetas de arriba se calculan sin conexión con tus metas.</div>`; return; }
   box.innerHTML = `<div class="note" aria-live="polite">Pensando 3 recetas con tus ingredientes…</div>`;
-  const prompt = `Eres un nutricionista deportivo en Colombia. Propón 3 recetas fáciles (máximo 25 minutos) para ${S.meal || "almuerzo"} de UNA porción.
-Usa SOLO estos ingredientes (puedes asumir sal, pimienta, agua y especias básicas): ${ingr.join(", ")}.
+  const prompt = `Eres un chef deportivo y nutricionista. Propón 3 recetas fáciles y rápidas (máximo 20 minutos) para ${S.meal || "almuerzo"} de UNA porción: con sabor (dorar, ácido al final, hierbas, textura crocante), colores que se vean bien en el plato y amables con el estómago (poca fritura, legumbres bien cocidas).
+Usa SOLO estos ingredientes (puedes asumir sal, pimienta, agua, ajo, limón y especias básicas): ${ingr.join(", ")}.
 Utensilios disponibles: ${(S.utensils || []).join(", ") || "estufa"}.
 Objetivo de la persona: ${GOALS[S.profile.goal].l}. Meta de esta comida: unas ${Math.round(t.kcal / meals)} kcal y ${Math.round(t.prot / meals)} g de proteína.
-Cantidades en gramos y medida casera. Español de Colombia, pasos cortos y claros.
-Responde SOLO con JSON: {"recetas":[{"nombre":"","tiempo_min":0,"ingredientes":[{"item":"","cantidad":""}],"pasos":[""],"kcal":0,"proteina_g":0,"carbohidratos_g":0,"grasa_g":0,"por_que":"una frase sobre por qué sirve para el objetivo"}]}`;
+Cantidades en gramos y medida casera. Español neutro, pasos cortos y claros.
+Responde SOLO con JSON: {"recetas":[{"nombre":"","tiempo_min":0,"ingredientes":[{"item":"","cantidad":""}],"pasos":[""],"emplatado":"una frase","para_el_estomago":"una frase","kcal":0,"proteina_g":0,"carbohidratos_g":0,"grasa_g":0,"por_que":"una frase sobre por qué sirve para el objetivo"}]}`;
   try {
     const res = await sample.json(prompt, {modelTier:"default"});
-    const list = (res && res.recetas || []).slice(0, 3).map(r => ({title: r.nombre, time: r.tiempo_min, items: (r.ingredientes || []).map(i => [i.item, i.cantidad]), steps: r.pasos || [], m:{k:+r.kcal || 0, p:+r.proteina_g || 0, c:+r.carbohidratos_g || 0, f:+r.grasa_g || 0}, why: r.por_que}));
+    const list = (res && res.recetas || []).slice(0, 3).map(r => ({title: r.nombre, time: r.tiempo_min, items: (r.ingredientes || []).map(i => [i.item, i.cantidad]), steps: r.pasos || [], m:{k:+r.kcal || 0, p:+r.proteina_g || 0, c:+r.carbohidratos_g || 0, f:+r.grasa_g || 0}, plate: r.emplatado || "", tummy: r.para_el_estomago || "", why: r.por_que}));
     if (!list.length) throw {code:"empty"};
     aiRecipes = list; showLocal();
   } catch(e){
@@ -2297,9 +2529,9 @@ function pwaNotify(title, body){
 function pwaSectionHTML(){
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), st = isStandalone(), np = "Notification" in window ? Notification.permission : "unsupported";
   return `<div class="section"><h2>App en tu celular</h2><div class="card stack">
-    ${st ? `<p class="small"><b>Instalada.</b> Funciona sin conexión y tus datos se guardan en este celular.</p>` : PWA.deferred ? `<button class="btn primary" id="pwaInstall">Instalar Coach de Bolsillo</button>` : ios ? `<p class="small">Para instalarla en iPhone: abre esta página en Safari, toca <b>Compartir</b> y luego <b>Agregar a pantalla de inicio</b>.</p>` : `<p class="small">Para instalarla: abre el menú del navegador (⋮) y toca <b>Instalar app</b> o <b>Agregar a pantalla principal</b>.</p>`}
+    ${st ? `<p class="small"><b>Instalada.</b> Funciona sin conexión y tus datos se guardan en este celular.</p>` : PWA.deferred ? `<button class="btn primary" id="pwaInstall">Instalar Gymnós</button>` : ios ? `<p class="small">Para instalarla en iPhone: abre esta página en Safari, toca <b>Compartir</b> y luego <b>Agregar a pantalla de inicio</b>.</p>` : `<p class="small">Para instalarla: abre el menú del navegador (⋮) y toca <b>Instalar app</b> o <b>Agregar a pantalla principal</b>.</p>`}
     <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small">Aviso cuando termina el descanso, aunque cambies de app</span>${np === "granted" ? `<span class="chip good">Activado</span>` : np === "denied" ? `<span class="chip warn">Bloqueado</span>` : np === "unsupported" ? `<span class="chip">No disponible</span>` : `<button class="btn small" id="pwaNotif">Activar</button>`}</div>
-    ${np === "denied" ? `<p class="small muted">Actívalo en los ajustes del celular › Notificaciones › Coach de Bolsillo.</p>` : ""}
+    ${np === "denied" ? `<p class="small muted">Actívalo en los ajustes del celular › Notificaciones › Gymnós.</p>` : ""}
     ${ios && np !== "granted" ? `<p class="small muted">En iPhone los avisos solo funcionan con la app agregada a la pantalla de inicio (iOS 16.4 o superior).</p>` : ""}
     <p class="small muted">Tus datos viven en este celular. Haz una copia de seguridad cada mes en "Tus datos". Para traer tu historial de la versión de Claude, exporta allí la copia (JSON) y restáurala aquí.</p></div></div>`;
 }
