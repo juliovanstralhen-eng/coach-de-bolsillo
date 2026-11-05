@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.7";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.8";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -3077,18 +3077,45 @@ function startWorkout(){
   const ps = planState(), day = ps.plan[ps.dayIdx], items = sessionItems(day, S.profile, true);
   if (!draft.t0) { draft.t0 = Date.now(); saveDraft(); }
   items.forEach(ex => ensureDraft(ex, ps));
-  WP = {ps, day, items, i:0, j:0, phase:"set", reps:0, extra:0, setStart:Date.now(), t0:draft.t0, restEnd:0, restTotal:60, metro:false, lastBeat:0, flash:"", calibNow:false};
+  WP = {ps, day, items, i:0, j:0, phase:"set", reps:0, extra:0, setStart:Date.now(), t0:draft.t0, restEnd:0, restTotal:60, metro:false, repStart:0, cue:0, flash:"", calibNow:false, lastEx:null};
   if (!wpFindNext()) WP.phase = "done"; else wpPrepSet();
   try { WP.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  try { audioSessionTransient(); if (window.speechSynthesis) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch(e){}
   stopRest(); document.body.style.overflow = "hidden";
   renderWP(); WP.timer = setInterval(tickWP, 200); keepAwake();
 }
-function wpPrepSet(){ const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.metro = false; WP.calibNow = c.kg && !c.ex.assist && !lastEntries(c.ex.id, 1).length && !c.d.calibrated && !c.d.sets.some(x => x.ok); }
+/* Preferencias de la rutina: cuenta para acomodarse, ritmo automático y voz */
+const wpSet = () => Object.assign({prep: 15, voice: true, auto: true}, S.wp || {});
+function setWpPref(k, v){ S.wp = Object.assign(wpSet(), {[k]: v}); save(); }
+const ES_NUM = ["cero","una","dos","tres","cuatro","cinco","seis","siete","ocho","nueve","diez","once","doce","trece","catorce","quince","dieciséis","diecisiete","dieciocho","diecinueve","veinte"];
+function speak(t, force){
+  try {
+    if ((!wpSet().voice && !force) || !window.speechSynthesis) return;
+    const ss = window.speechSynthesis; ss.cancel();
+    const u = new SpeechSynthesisUtterance(t), vs = ss.getVoices(), v = vs.find(x => /^es-(CO|MX|US|419)/i.test(x.lang)) || vs.find(x => /^es/i.test(x.lang));
+    u.lang = v ? v.lang : "es-ES"; if (v) u.voice = v; u.rate = 1.12; u.volume = 1; ss.speak(u);
+  } catch(e){}
+}
+function wpPrepSet(){
+  const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.metro = false; WP.calibNow = c.kg && !c.ex.assist && !lastEntries(c.ex.id, 1).length && !c.d.calibrated && !c.d.sets.some(x => x.ok);
+  const pr = wpSet().prep;
+  const wu = WP.i === firstKgComp(WP.items) && WP.j === 0 && !WP.calibNow && !c.d.sets.some(x => x.ok) ? warmupFor(c.ex, +c.st.kg) : null;
+  WP.warm = wu && wu.length ? wu : null;
+  if (WP.warm) { WP.phase = "prep"; WP.prepWait = true; WP.prepTotal = Math.max(pr, 15); WP.prepEnd = 0; WP.lastCount = null; }
+  else if (pr > 0 && WP.lastEx !== c.ex.id && !c.d.sets.some(x => x.ok)) { WP.phase = "prep"; WP.prepWait = false; WP.prepTotal = pr; WP.prepEnd = Date.now() + pr * 1000; WP.lastCount = null; }
+  else wpBeginSet(true);
+}
+/* Arranca la serie: cronómetro en cero y, si está activo, el ritmo que cuenta solo */
+function wpBeginSet(silent){
+  const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.lastEx = c.ex.id;
+  WP.metro = wpSet().auto && c.rx.unit === "reps"; WP.repStart = Date.now(); WP.cue = 0;
+  if (!silent) renderWP();
+}
 function wpRebuild(){ WP.items = sessionItems(WP.day, S.profile, true); WP.items.forEach(ex => ensureDraft(ex, WP.ps)); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); }
 function beep(f = 880, d = .09){ try { const a = (WP && WP.audio) || AUD; if (!a) return; if (a.state === "suspended") a.resume(); const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(.2, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + d); o.start(); o.stop(a.currentTime + d + .02); } catch(e){} }
 function buzz(p){ try { navigator.vibrate && navigator.vibrate(p); } catch(e){} }
 function exitWorkout(saveIt){
-  if (!WP) return; clearInterval(WP.timer); try { WP.lock && WP.lock.release(); } catch(e){} try { WP.audio && WP.audio.close(); } catch(e){}
+  if (!WP) return; try { window.speechSynthesis && speechSynthesis.cancel(); } catch(e){} clearInterval(WP.timer); try { WP.lock && WP.lock.release(); } catch(e){} try { WP.audio && WP.audio.close(); } catch(e){}
   cancelAnimationFrame(animRaf); const items = WP.items, ps = WP.ps; WP = null; releaseAwake(); NOTIF.clear();
   const el = $("#wp"); el.hidden = true; el.innerHTML = ""; document.body.style.overflow = "";
   renderHoy(); if (saveIt) finishSession(items, ps);
@@ -3103,10 +3130,10 @@ function wpAfterSet(c){
 function ringSVG(){ const left = Math.max(0, (WP.restEnd - Date.now()) / 1000), R = 88, C = 2 * Math.PI * R; return `<svg class="ring" width="220" height="220" viewBox="0 0 220 220" aria-hidden="true"><circle cx="110" cy="110" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="14"/><circle id="ringArc" cx="110" cy="110" r="${R}" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.restTotal)}" transform="rotate(-90 110 110)"/><text id="ringT" x="110" y="128" text-anchor="middle" font-size="54" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${mmss(Math.ceil(left))}</text></svg>`; }
 function setPanel(c){
   const timed = c.rx.unit === "s" || c.rx.unit === "min", el = Math.floor((Date.now() - WP.setStart) / 1000);
-  const goal = c.rx.unit === "min" ? `meta ${c.rx.lo}–${c.rx.hi} min` : c.rx.unit === "s" ? `segundos · meta ${c.rx.lo}–${c.rx.hi}` : c.rx.unit === "resp" ? `toca en cada respiración · meta ${c.rx.lo}–${c.rx.hi}` : `toca en cada repetición · meta ${WP.calibNow ? "10" : c.rx.lo + "–" + c.rx.hi}`;
+  const goal = c.rx.unit === "min" ? `meta ${c.rx.lo}–${c.rx.hi} min` : c.rx.unit === "s" ? `segundos · meta ${c.rx.lo}–${c.rx.hi}` : c.rx.unit === "resp" ? `toca en cada respiración · meta ${c.rx.lo}–${c.rx.hi}` : `${WP.metro ? "cuenta solo" : "toca en cada repetición"} · meta ${WP.calibNow ? "10" : c.rx.lo + "–" + c.rx.hi}`;
   return `<button class="counter" id="wpCount" aria-label="${timed ? "Cronómetro de la serie" : "Contador: toca para sumar una"}"><span id="wpN">${c.rx.unit === "min" ? mmss(el) : timed ? el : WP.reps}</span><small>${goal}</small></button>
-    ${timed ? "" : `<div class="row between"><div class="row"><button class="btn small" id="wpMinus" aria-label="Restar una">−1</button>${c.rx.unit === "reps" ? `<button class="btn small" id="wpMetro" aria-pressed="${WP.metro}">${WP.metro ? "Ritmo activo" : "Contar con ritmo"}</button>` : ""}</div><span class="small muted">Serie <span class="num" id="wpSetT" style="font-size:17px">${mmss(el)}</span></span></div>`}
-    ${WP.metro ? `<p class="small muted">El ritmo cuenta solo. Al terminar, confirma el número real.</p>` : ""}
+    ${timed ? "" : `<div class="row between"><div class="row"><button class="btn small" id="wpMinus" aria-label="Restar una">−1</button>${c.rx.unit === "reps" ? `<button class="btn small ${WP.metro ? "primary" : ""}" id="wpMetro" aria-pressed="${WP.metro}">${WP.metro ? "Ritmo: cuenta solo" : "Ritmo automático"}</button>` : ""}<button class="btn small" id="wpVoice" aria-pressed="${wpSet().voice}">${wpSet().voice ? "Voz: sí" : "Voz: no"}</button></div><span class="small muted">Serie <span class="num" id="wpSetT" style="font-size:17px">${mmss(el)}</span></span></div>`}
+    ${WP.metro ? `<p class="small muted">Cuenta en voz alta al ritmo de la animación: un tono al cambiar de fase y el número al terminar cada repetición. Si vas a otro ritmo, toca el contador y cuentas tú.</p>` : ""}
     <button class="btn primary big block" id="wpEnd">${c.rx.unit === "min" ? "Terminar" : "Terminar serie"}</button>
     <div class="row" style="justify-content:center">${busyParts(c.ex).length ? `<button class="btn small ghost" id="wpBusy">Máquina ocupada</button>` : ""}<button class="btn small ghost" id="wpPain">Sentí dolor</button><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>`;
 }
@@ -3132,6 +3159,17 @@ function renderWP(){
         ${WP.flash ? `<div class="note" style="width:100%;text-align:left">${esc(WP.flash)}</div>` : ""}
         ${NOTIF.can() && NOTIF.perm() === "default" && !S.notifAsked ? `<div class="card stack" style="width:100%;text-align:left;gap:8px" id="nPrime"><b>¿Te avisamos cuando termine el descanso?</b><span class="small muted">Así puedes mirar el chat o la música sin perder la cuenta.</span><div class="row"><button class="btn small primary" id="nYes">Sí, avisarme</button><button class="btn small ghost" id="nNo">Ahora no</button></div></div>` : ""}
         <div class="card" style="width:100%;text-align:left"><div class="eyebrow">Sigue</div><h3>${esc(c.ex.n)} · ${c.rx.unit === "min" ? "cardio" : `serie ${WP.j + 1} de ${c.rx.sets}`}</h3><p class="small muted">${c.kg && c.st.kg !== "" ? fmt(+c.st.kg) + " kg × " : ""}${rxTxt}${c.rx.rir != null ? ` · RIR ${c.rx.rir}` : ""}</p><p class="small" style="margin-top:8px"><b>Clave técnica:</b> ${esc(g.steps[WP.j % g.steps.length])}</p></div></div>`;
+    } else if (WP.phase === "prep") {
+      const left = WP.prepWait ? WP.prepTotal : Math.max(0, (WP.prepEnd - Date.now()) / 1000), R = 70, C = 2 * Math.PI * R, pr = wpSet().prep;
+      body = `<div class="stack" style="gap:12px"><div class="eyebrow">Prepárate · Ejercicio ${WP.i + 1} de ${WP.items.length}</div>
+        <div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h2 style="min-width:0">${esc(c.ex.n)}</h2><button class="btn small" id="wpGuide">Ver técnica</button></div>
+        <canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}"></canvas>
+        <div class="row" style="justify-content:center;gap:16px;flex-wrap:nowrap"><svg width="170" height="170" viewBox="0 0 170 170" aria-hidden="true"><circle cx="85" cy="85" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"/><circle id="prepArc" cx="85" cy="85" r="${R}" fill="none" stroke="var(--go)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.prepTotal)}" transform="rotate(-90 85 85)"/><text id="prepT" x="85" y="102" text-anchor="middle" font-size="50" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${Math.ceil(left)}</text></svg>
+          <div class="stack" style="gap:6px;min-width:0">${WP.prepWait ? `<b>Primero, calienta</b><span class="small">${WP.warm.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" y ")}, sin llegar al cansancio.</span><span class="small muted">Cuando termines toca "Ya calenté": tendrás ${WP.prepTotal} s para cargar el peso de trabajo.</span>` : `<b>Acomódate</b><span class="small muted">${isMachine(c.ex) ? "Ajusta el asiento y los apoyos, pon el peso y toma posición." : "Toma el peso, colócate y respira."} Al llegar a cero empieza la serie.</span>`}</div></div>
+        ${c.kg ? `<div class="stepper"><button class="rbtn" id="kgm" aria-label="Menos peso">−</button><div style="text-align:center;flex:1"><div class="num" style="font-size:34px" id="wpKg">${c.st.kg === "" ? "–" : fmt(+c.st.kg)}</div><div class="small muted">kg${c.ex.assist ? " de asistencia" : ""} · ${c.rx.lo}–${c.rx.hi} ${UNIT_L[c.rx.unit]}</div></div><button class="rbtn" id="kgp" aria-label="Más peso">+</button></div>` : ""}
+        <div class="row" style="justify-content:center">${WP.prepWait ? `<button class="btn primary big" id="ppWarm">Ya calenté</button><button class="btn" id="ppGo">Empezar la serie ya</button>` : `<button class="btn" id="ppAdd">+15 s</button><button class="btn primary" id="ppGo">Estoy listo</button>`}</div>
+        ${busyParts(c.ex).length ? `<div class="row" style="justify-content:center"><button class="btn small ghost" id="wpBusy">Máquina ocupada</button><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>` : `<div class="row" style="justify-content:center"><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>`}
+        <div class="row small" style="justify-content:center;gap:6px"><span class="muted">Tiempo para acomodarte:</span>${[[15, "15 s"], [30, "30 s"], [0, "Sin cuenta"]].map(([v, l]) => `<button class="btn small ${pr === v ? "primary" : "ghost"}" data-prep="${v}" aria-pressed="${pr === v}" style="min-height:30px">${l}</button>`).join("")}</div></div>`;
     } else if (WP.phase === "calibres") {
       body = `<div class="card stack" style="text-align:center;align-items:center"><div class="eyebrow">Peso encontrado · ${esc(c.ex.n)}</div><div class="num" style="font-size:56px">${WP.calibKg != null ? fmt(WP.calibKg) + " kg" : "Listo"}</div><p class="small muted">Con este peso deberías hacer ${c.rx.lo}–${c.rx.hi} repeticiones dejando ${c.rx.rir} en reserva. Si la primera serie se siente muy distinta, ajústalo con + y −.</p><button class="btn primary big block" id="calGo">Empezar mis series</button></div>`;
     } else if (WP.phase === "rircheck") {
@@ -3144,7 +3182,7 @@ function renderWP(){
         <canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}"></canvas>
         ${rxChips(c.rx)}
         ${WP.calibNow && WP.phase === "set" ? `<div class="note"><b>Serie de prueba (no cuenta).</b> Haz 10 repeticiones con este peso y dinos cuántas más podías hacer. Con eso calculamos tu peso exacto.</div>` : ""}
-        ${wu && WP.phase === "set" ? `<div class="note small"><b>Antes, calienta:</b> ${wu.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" y ")}.</div>` : ""}
+        ${wu && WP.phase === "set" && !WP.metro && WP.lastEx !== c.ex.id ? `<div class="note small"><b>Antes, calienta:</b> ${wu.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" y ")}.</div>` : ""}
         ${c.kg ? `<div class="stepper"><button class="rbtn" id="kgm" aria-label="Menos peso">−</button><div style="text-align:center;flex:1"><div class="num" style="font-size:34px" id="wpKg">${c.st.kg === "" ? "–" : fmt(+c.st.kg)}</div><div class="small muted">kg${c.ex.assist ? " de asistencia" : ""} · salto de ${fmt(stepFor(c.ex))} kg${c.st.kg === "" ? " · elige tu peso" : ""}</div></div><button class="rbtn" id="kgp" aria-label="Más peso">+</button></div>` : ""}
         ${WP.phase === "set" ? setPanel(c) : rirPanel(c)}</div>`;
     }
@@ -3159,6 +3197,18 @@ function bindWP(){
   const c = wpCur();
   if (WP.phase === "rest") { const ny = q("#nYes"); if (ny) { ny.onclick = async () => { const r = await NOTIF.ask(); toast(r === "granted" ? "Listo: te avisaremos al terminar cada descanso" : "Sin avisos: igual suena y vibra con la app abierta"); renderWP(); }; q("#nNo").onclick = () => { S.notifAsked = true; save(); renderWP(); }; }
     q("#rAdd").onclick = () => { WP.restEnd += 30000; WP.restTotal += 30; }; q("#rSkip").onclick = () => { WP.flash = ""; wpPrepSet(); renderWP(); }; return; }
+  if (WP.phase === "prep") {
+    startAnim(q("#wpAnim"), c.ex, null); q("#wpGuide").onclick = () => openGuide(c.ex.id);
+    const setKg = v => { const nv = Math.max(0, Math.round(v * 4) / 4); c.st.kg = nv; c.d.touched = true; for (let k = WP.j + 1; k < c.d.sets.length; k++) { const x = c.d.sets[k]; if (!x.ok) x.kg = nv; } saveDraft(); q("#wpKg").textContent = fmt(nv); };
+    if (q("#kgm")) { q("#kgm").onclick = () => setKg((c.st.kg === "" ? 0 : +c.st.kg) - stepFor(c.ex)); q("#kgp").onclick = () => setKg((c.st.kg === "" ? 0 : +c.st.kg) + stepFor(c.ex)); }
+    if (q("#ppAdd")) q("#ppAdd").onclick = () => { WP.prepEnd += 15000; WP.prepTotal += 15; WP.lastCount = null; };
+    if (q("#wpBusy")) q("#wpBusy").onclick = () => openBusy(c.ex.id, WP.day, WP.items, msg => { if (WP) { WP.flash = msg || ""; wpRebuild(); } });
+    q("#wpSkip").onclick = () => { c.d.skip = true; saveDraft(); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); };
+    if (q("#ppWarm")) q("#ppWarm").onclick = () => { WP.prepWait = false; WP.prepEnd = Date.now() + WP.prepTotal * 1000; WP.lastCount = null; speak("Carga el peso de trabajo"); renderWP(); };
+    q("#ppGo").onclick = () => { speak("¡Vamos!"); beep(988, .2); wpBeginSet(); };
+    el.querySelectorAll("[data-prep]").forEach(b => b.onclick = () => { const v = +b.dataset.prep; setWpPref("prep", v); if (WP.prepWait) { WP.prepTotal = Math.max(v, 15); renderWP(); return; } if (!v) { wpBeginSet(); return; } WP.prepTotal = v; WP.prepEnd = Date.now() + v * 1000; WP.lastCount = null; renderWP(); });
+    return;
+  }
   if (WP.phase === "calibres") { q("#calGo").onclick = () => { WP.phase = "rest"; WP.transition = false; WP.restTotal = 60; WP.restEnd = Date.now() + 60000; WP.flash = "Descansa un minuto antes de tu primera serie."; renderWP(); }; return; }
   if (WP.phase === "rircheck") {
     q("#rcCount").onclick = () => { WP.extra++; q("#rcN").textContent = WP.extra; beep(660, .05); buzz(15); };
@@ -3177,14 +3227,15 @@ function bindWP(){
   if (q("#kgm")) { q("#kgm").onclick = () => setKg((c.st.kg === "" ? 0 : +c.st.kg) - stepFor(c.ex)); q("#kgp").onclick = () => setKg((c.st.kg === "" ? 0 : +c.st.kg) + stepFor(c.ex)); }
   if (WP.phase === "set") {
     const timed = c.rx.unit === "s" || c.rx.unit === "min";
-    q("#wpCount").onclick = () => { if (timed) return; WP.reps++; q("#wpN").textContent = WP.reps; beep(660, .05); buzz(15); };
+    q("#wpCount").onclick = () => { if (timed) return; if (WP.metro) { WP.metro = false; renderWP(); toast("Ritmo apagado: ahora cuentas tú"); return; } WP.reps++; q("#wpN").textContent = WP.reps; beep(660, .05); buzz(15); speak(ES_NUM[WP.reps] || String(WP.reps)); };
     if (q("#wpMinus")) q("#wpMinus").onclick = () => { WP.reps = Math.max(0, WP.reps - 1); q("#wpN").textContent = WP.reps; };
-    if (q("#wpMetro")) q("#wpMetro").onclick = () => { WP.metro = !WP.metro; WP.lastBeat = Date.now(); renderWP(); };
+    if (q("#wpMetro")) q("#wpMetro").onclick = () => { WP.metro = !WP.metro; setWpPref("auto", WP.metro); WP.repStart = Date.now() + 300; WP.cue = 0; renderWP(); };
+    if (q("#wpVoice")) q("#wpVoice").onclick = () => { const v = !wpSet().voice; setWpPref("voice", v); if (v) speak("Voz activada", true); else try { speechSynthesis.cancel(); } catch(e){} renderWP(); };
     q("#wpPain").onclick = () => openPain(c.ex.id, () => { if (WP) wpRebuild(); });
     if (q("#wpBusy")) q("#wpBusy").onclick = () => openBusy(c.ex.id, WP.day, WP.items, msg => { if (WP) { WP.flash = msg || ""; wpRebuild(); } });
     q("#wpSkip").onclick = () => { c.d.skip = true; saveDraft(); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); };
     q("#wpEnd").onclick = () => {
-      WP.metro = false;
+      WP.metro = false; try { window.speechSynthesis && speechSynthesis.cancel(); } catch(e){}
       if (timed) { const sec = Math.round((Date.now() - WP.setStart) / 1000); c.st.reps = c.rx.unit === "min" ? Math.max(1, Math.round(sec / 60)) : Math.max(1, sec); c.st.ok = true; saveDraft(); wpAfterSet(c); return; }
       if (!WP.reps) WP.reps = WP.calibNow ? 10 : c.rx.lo;
       if (c.rx.unit === "resp") { c.st.reps = WP.reps; c.st.ok = true; saveDraft(); wpAfterSet(c); return; }
@@ -3214,7 +3265,17 @@ function tickWP(){
       if (n) n.textContent = c.rx.unit === "min" ? mmss(sx) : sx;
       const marks = c.rx.unit === "min" ? [c.rx.lo * 60, c.rx.hi * 60] : [c.rx.lo, c.rx.hi];
       if (marks.includes(sx) && WP.lastCount !== sx) { WP.lastCount = sx; beep(880, .15); buzz(80); }
-    } else if (WP.metro) { const sp = P[c.ex.an], rep = ((sp.d[0] || 1) + (sp.hold || .35) + (sp.d[1] || 1) + .45) * 1000; if (Date.now() - WP.lastBeat >= rep) { WP.lastBeat = Date.now(); WP.reps++; if (n) n.textContent = WP.reps; beep(); } }
+    } else if (WP.metro) {
+      const sp = P[c.ex.an], half = ((sp.d[0] || 1) + (sp.hold || .35)) * 1000, rep = half + ((sp.d[1] || 1) + .45) * 1000, e = Date.now() - WP.repStart;
+      if (e >= 0 && WP.cue === 0 && e >= half) { WP.cue = 1; beep(520, .07); }
+      if (e >= rep) { WP.repStart += rep; WP.cue = 0; WP.reps++; if (n) n.textContent = WP.reps; beep(880, .05); speak(WP.reps === c.rx.hi ? `${ES_NUM[WP.reps] || WP.reps}. Meta cumplida` : (ES_NUM[WP.reps] || String(WP.reps))); }
+    }
+  }
+  if (WP.phase === "prep" && !WP.prepWait) {
+    const left = (WP.prepEnd - Date.now()) / 1000, t = el.querySelector("#prepT"), a = el.querySelector("#prepArc");
+    if (t) { t.textContent = Math.max(0, Math.ceil(left)); a.setAttribute("stroke-dashoffset", 2 * Math.PI * 70 * (1 - Math.max(0, left) / WP.prepTotal)); }
+    const sx = Math.ceil(left); if (sx <= 3 && sx > 0 && WP.lastCount !== sx) { WP.lastCount = sx; beep(740, .08); speak(ES_NUM[sx] === "una" ? "uno" : ES_NUM[sx]); }
+    if (left <= 0) { beep(988, .25); buzz([120, 60, 120]); speak("¡Vamos!"); wpBeginSet(); }
   }
   if (WP.phase === "rest") {
     const left = (WP.restEnd - Date.now()) / 1000, t = el.querySelector("#ringT"), a = el.querySelector("#ringArc");
