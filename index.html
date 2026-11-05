@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="description" content="Gymnós: entrenador y nutricionista en tu bolsillo. Plan que progresa contigo, técnica animada, rutina guiada y cocina de deportista. Gratis y sin internet.">
 <meta name="theme-color" content="#ECEFEE" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1615" media="(prefers-color-scheme: dark)">
@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.3";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.4";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -142,7 +142,8 @@ a.btn.primary{color:var(--go-ink)}
 .btn.block{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
-input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;min-height:42px;padding:8px 10px;width:100%}
+/* 16 px mínimo: con menos, el iPhone amplía la pantalla al escribir */
+input,select,textarea{font:inherit;font-size:max(16px,1em);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;min-height:42px;padding:8px 10px;width:100%}
 textarea{min-height:70px;resize:vertical}
 input[type=checkbox],input[type=radio]{width:auto;min-height:0;padding:0;accent-color:var(--accent)}
 input[type=checkbox]{width:20px;height:20px;flex:none}
