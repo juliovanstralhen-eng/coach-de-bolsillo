@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.0";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.1";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -568,7 +568,7 @@ const TERMS = {
 
 /* ============ Estado y almacenamiento ============ */
 const LS_KEY = "coach-bolsillo-v1";
-const freshState = () => ({profile:null, done:0, logs:[], measures:[], pantry:[], utensils:["estufa"], kcalAdj:0, recipes:[], figSex:null, skin:"medio", pain:[], notices:[], stepSz:{}, food:{}, shopCheck:{}, rirCal:[], deload:null, deloadDismiss:null, sumSeen:"", updatedAt:0});
+const freshState = () => ({profile:null, done:0, logs:[], measures:[], pantry:[], utensils:["estufa"], kcalAdj:0, recipes:[], figSex:null, skin:"medio", pain:[], notices:[], stepSz:{}, food:{}, intake:{}, myFoods:[], shopCheck:{}, rirCal:[], deload:null, deloadDismiss:null, sumSeen:"", updatedAt:0});
 let S = freshState();
 let draft = {}; // series en curso
 function lsGet(k){ try { return JSON.parse(localStorage.getItem(k) || "null"); } catch(e){ return null; } }
@@ -596,6 +596,7 @@ const Cloud = {db:null, uid:null, ready:false,
         else S = Object.assign(fresh, {profile: meta.profile || null, done: meta.done || 0, pantry: meta.pantry || [], utensils: meta.utensils || ["estufa"], kcalAdj: meta.kcalAdj || 0, figSex: meta.figSex || null, skin: meta.skin || "medio"});
         S.updatedAt = meta.updatedAt || 0;
         S.recipes = (docs.recetario && docs.recetario.items) || [];
+        S.intake = (docs.comidas && docs.comidas.items) || {};
         S.measures = (docs.medidas && docs.medidas.items) || [];
         S.logs = Object.entries(docs).filter(([k]) => k.startsWith("ses_")).map(([, v]) => v).sort((a, b) => a.ts - b.ts);
         const ph = Object.entries(docs).filter(([k]) => k.startsWith("foto_")).map(([, v]) => v).sort((a, b) => a.ts - b.ts);
@@ -608,14 +609,15 @@ const Cloud = {db:null, uid:null, ready:false,
       this.ready = true; setSync();
     } catch(e){ this.ready = false; setSync(); }
   },
-  async pushMeta(){ if (!this.db) return; try { const {logs, measures, recipes, ...data} = S; await this.col().doc("perfil").set({data, updatedAt:S.updatedAt}); } catch(e){ setSync(true); } },
+  async pushMeta(){ if (!this.db) return; try { const {logs, measures, recipes, intake, ...data} = S; await this.col().doc("perfil").set({data, updatedAt:S.updatedAt}); } catch(e){ setSync(true); } },
   async pushMeasures(){ if (!this.db) return; try { await this.col().doc("medidas").set({items:S.measures}); } catch(e){ setSync(true); } },
+  async pushIntake(){ if (!this.db) return; try { await this.col().doc("comidas").set({items:S.intake || {}}); } catch(e){ setSync(true); } },
   async pushRecipes(){ if (!this.db) return; try { await this.col().doc("recetario").set({items:S.recipes}); } catch(e){ setSync(true); } },
   async pushSession(s){ if (!this.db) return; try { await this.col().doc("ses_" + s.ts).set(s); } catch(e){ setSync(true); } },
   async delSession(ts){ if (!this.db) return; try { await this.col().doc("ses_" + ts).delete(); } catch(e){ setSync(true); } },
   async pushPhoto(p){ if (!this.db) return; try { await this.col().doc("foto_" + p.ts).set(p); } catch(e){ setSync(true); } },
   async delPhoto(ts){ if (!this.db) return; try { await this.col().doc("foto_" + ts).delete(); } catch(e){} },
-  async pushAll(){ await this.pushMeta(); await this.pushMeasures(); await this.pushRecipes(); for (const s of S.logs) await this.pushSession(s); },
+  async pushAll(){ await this.pushMeta(); await this.pushMeasures(); await this.pushRecipes(); await this.pushIntake(); for (const s of S.logs) await this.pushSession(s); },
   async wipe(){ if (!this.db) return; try { const snap = await this.col().get(); for (const d of snap.docs) await this.col().doc(d.id).delete(); } catch(e){} }
 };
 function setSync(err){
@@ -627,7 +629,7 @@ function setSync(err){
 }
 function save(part){
   S.updatedAt = Date.now(); lsSet(LS_KEY, S);
-  if (part === "measures") { Cloud.pushMeasures(); Cloud.pushMeta(); } else if (part === "recipes") Cloud.pushRecipes(); else Cloud.pushMeta();
+  if (part === "measures") { Cloud.pushMeasures(); Cloud.pushMeta(); } else if (part === "recipes") Cloud.pushRecipes(); else if (part === "intake") { Cloud.pushIntake(); Cloud.pushMeta(); } else Cloud.pushMeta();
 }
 function saveDraft(){ lsSet(LS_KEY + "-draft", draft); }
 
@@ -1111,6 +1113,273 @@ function localRecipes(pantry, meal, t, meals){
     const r = make(prot, carb, vg, null, title, methodFor(prot, carb, vg)); r.key = key; out.push(r);
   }
   return out.slice(0, 5);
+}
+
+/* ============ Comida de hoy: registro por foto de etiqueta, foto del plato o a mano ============ */
+/* Valores aproximados por 100 g (USDA FoodData Central). u = [gramos, medida casera] */
+const FOOD_EXTRA = {
+  "Yogur griego natural":{k:97,p:9,c:3.9,f:5,u:[150,"pote"]}, "Yogur griego 0 %":{k:59,p:10.3,c:3.6,f:.4,u:[150,"pote"]},
+  "Leche descremada":{k:34,p:3.4,c:5,f:.1,u:[240,"vaso"]}, "Bebida de almendra":{k:15,p:.5,c:.3,f:1.1,u:[240,"vaso"]},
+  "Queso mozzarella":{k:280,p:28,c:3,f:17,u:[30,"tajada"]}, "Queso crema":{k:342,p:6,c:4,f:34,u:[15,"cda"]},
+  "Salmón":{k:206,p:22,c:0,f:12,st:"cocido"}, "Pescado blanco":{k:128,p:26,c:0,f:2.7,st:"cocido"},
+  "Carne de res magra":{k:200,p:29,c:0,f:9,st:"cocida"}, "Lomo de cerdo":{k:196,p:27,c:0,f:9,st:"cocido"},
+  "Jamón de pavo":{k:104,p:17,c:4,f:2,u:[20,"tajada"]}, "Tofu firme":{k:144,p:17,c:3,f:9},
+  "Proteína en polvo":{k:400,p:80,c:8,f:6,u:[30,"scoop"]},
+  "Arroz integral":{k:123,p:2.7,c:25.6,f:1,st:"cocido"}, "Quinoa":{k:120,p:4.4,c:21,f:1.9,st:"cocida"}, "Batata":{k:90,p:2,c:21,f:.2,st:"cocida"},
+  "Pan blanco":{k:265,p:9,c:49,f:3.2,u:[25,"tajada"]}, "Tortilla de maíz":{k:218,p:5.7,c:45,f:2.9,u:[30,"tortilla"]}, "Tortilla de trigo":{k:312,p:8,c:52,f:8,u:[40,"tortilla"]},
+  "Granola":{k:471,p:10,c:64,f:20,u:[30,"porción de 3 cdas"]}, "Cereal de maíz":{k:357,p:7.5,c:84,f:.4,u:[30,"taza"]},
+  "Manzana":{k:52,p:.3,c:14,f:.2,u:[180,"unidad"]}, "Fresas":{k:32,p:.7,c:7.7,f:.3}, "Naranja":{k:47,p:.9,c:12,f:.1,u:[150,"unidad"]}, "Piña":{k:50,p:.5,c:13,f:.1}, "Uvas":{k:69,p:.7,c:18,f:.2},
+  "Lechuga":{k:15,p:1.4,c:2.9,f:.2}, "Pimentón":{k:31,p:1,c:6,f:.3}, "Champiñones":{k:22,p:3.1,c:3.3,f:.3},
+  "Almendras":{k:579,p:21,c:22,f:50,u:[28,"puñado"]}, "Maní tostado":{k:585,p:24,c:21,f:50,u:[28,"puñado"]}, "Nueces":{k:654,p:15,c:14,f:65,u:[28,"puñado"]},
+  "Chocolate oscuro 70 %":{k:598,p:7.8,c:46,f:43,u:[10,"cuadrito"]}, "Miel":{k:304,p:.3,c:82,f:0,u:[21,"cda"]}, "Azúcar":{k:387,p:0,c:100,f:0,u:[5,"cdita"]},
+  "Mantequilla":{k:717,p:.9,c:.1,f:81,u:[10,"cdita"]}, "Mayonesa":{k:680,p:1,c:.6,f:75,u:[15,"cda"]},
+  "Gaseosa":{k:42,p:0,c:10.6,f:0,u:[350,"lata"]}, "Jugo de naranja":{k:45,p:.7,c:10,f:.2,u:[250,"vaso"]}, "Cerveza":{k:43,p:.5,c:3.6,f:0,u:[330,"lata"]}, "Café negro":{k:2,p:.3,c:0,f:0,u:[240,"taza"]},
+  "Galletas de soda":{k:418,p:9,c:71,f:10,u:[25,"paquete"]}, "Papas fritas de paquete":{k:536,p:7,c:53,f:35,u:[30,"paquete pequeño"]},
+  "Pizza":{k:266,p:11,c:33,f:10,u:[110,"porción"]}, "Hamburguesa":{k:254,p:13,c:27,f:11,u:[200,"unidad"]}, "Empanada frita":{k:300,p:8,c:30,f:16,u:[100,"unidad"]}, "Arepa de queso":{k:260,p:8,c:36,f:9,u:[120,"unidad"]}
+};
+const MEAL_N = {desayuno:"Desayuno", almuerzo:"Almuerzo", snack:"Snack", cena:"Cena"};
+const nowMeal = () => { const h = new Date().getHours(); return h < 11 ? "desayuno" : h < 15 ? "almuerzo" : h < 19 ? "snack" : "cena"; };
+function foodDB(){ const db = {}; Object.entries(FOOD).forEach(([n, f]) => db[n] = f); Object.entries(FOOD_EXTRA).forEach(([n, f]) => db[n] = f); (S.myFoods || []).forEach(f => db[f.name] = Object.assign({mine:1}, f)); return db; }
+const intakeDay = (d = todayISO()) => ((S.intake = S.intake || {})[d] = (S.intake[d] || []));
+const per = (f, g) => ({k: f.k * g / 100, p: f.p * g / 100, c: f.c * g / 100, f: f.f * g / 100});
+function addIntake(list){
+  const day = intakeDay(); list.forEach(e => day.push(Object.assign({id: "i" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now()}, e)));
+  const cut = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10); Object.keys(S.intake).forEach(d => { if (d < cut) delete S.intake[d]; });
+  save("intake");
+}
+function intakeTotals(d){ return intakeDay(d).reduce((a, e) => ({k: a.k + e.k, p: a.p + e.p, c: a.c + e.c, f: a.f + e.f}), {k:0, p:0, c:0, f:0}); }
+function foodCard(p){
+  const t = targets(p), tot = intakeTotals(), day = intakeDay();
+  const rows = [["Calorías", tot.k, t.kcal, "kcal", "go"], ["Proteína", tot.p, t.prot, "g", "good"], ["Carbohidratos", tot.c, t.carb, "g", "accent"], ["Grasas", tot.f, t.fat, "g", "warn"]];
+  const left = t.kcal - tot.k, leftP = t.prot - tot.p;
+  const msg = !day.length ? "Registra tu primera comida: foto de la etiqueta, del plato o escribe los ingredientes." :
+    left > 60 ? `Te faltan <b>${fmt(left, 0)} kcal</b>${leftP > 5 ? ` y <b>${fmt(leftP, 0)} g de proteína</b>` : ""} para tu meta de hoy.` :
+    left >= -150 ? `Llegaste a tu meta de calorías de hoy${leftP > 5 ? `; aún faltan <b>${fmt(leftP, 0)} g de proteína</b>` : ""}.` : `Pasaste tu meta de hoy por ${fmt(-left, 0)} kcal. No pasa nada: el promedio de la semana es lo que cuenta.`;
+  const byMeal = Object.keys(MEAL_N).map(m => [m, day.filter(e => e.meal === m)]).filter(([, l]) => l.length);
+  return `<div class="section"><div class="card stack" style="gap:12px" id="foodCard">
+    <div class="row between"><div><div class="eyebrow">Comida de hoy</div><div class="num" style="font-size:26px">${fmt(tot.k, 0)} <span class="small muted" style="font-family:var(--body);font-weight:500">de ${fmt(t.kcal, 0)} kcal</span></div></div><button class="btn primary small" id="foodAdd">Agregar comida</button></div>
+    <div class="stack" style="gap:8px">${rows.map(([l, v, g, u, col]) => { const pct = g ? v / g * 100 : 0; return `<div><div class="row between small" style="margin-bottom:4px"><span style="font-weight:600">${l}</span><span class="muted"><b style="color:var(--ink)">${fmt(v, 0)}</b> / ${fmt(g, 0)} ${u} · ${fmt(pct, 0)} %</span></div><div class="prog" style="height:9px" role="progressbar" aria-label="${l}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${Math.min(100, pct)}%;background:var(--${col})"></i></div></div>`; }).join("")}</div>
+    <p class="small">${msg}</p>
+    ${byMeal.length ? `<details><summary class="small" style="cursor:pointer;font-weight:600">Ver lo registrado (${day.length})</summary><div class="stack" style="gap:6px;margin-top:8px">${byMeal.map(([m, l]) => `<div><div class="eyebrow" style="margin-bottom:2px">${MEAL_N[m]} · ${fmt(l.reduce((a, e) => a + e.k, 0), 0)} kcal</div>${l.map(e => `<div class="row between small" style="flex-wrap:nowrap;padding:4px 0;border-bottom:1px solid var(--line)"><span style="min-width:0">${esc(e.name)} <span class="muted">· ${fmt(e.g, 0)} g · ${fmt(e.k, 0)} kcal · P ${fmt(e.p, 0)} · C ${fmt(e.c, 0)} · G ${fmt(e.f, 0)}</span></span><button class="btn small ghost" data-idel="${e.id}" aria-label="Quitar ${esc(e.name)}" style="min-height:30px;padding:0 10px">Quitar</button></div>`).join("")}</div>`).join("")}</div></details>` : ""}
+  </div></div>`;
+}
+function bindFood(after){
+  $("#foodAdd") && ($("#foodAdd").onclick = () => openFood({meal: nowMeal(), after}));
+  document.querySelectorAll("[data-idel]").forEach(b => b.onclick = () => { const d = intakeDay(); const i = d.findIndex(e => e.id === b.dataset.idel); if (i >= 0) d.splice(i, 1); save("intake"); after(); });
+}
+/* ---- Fotos: reducir y (en la app instalada) leer el texto de la etiqueta sin internet ---- */
+function prepImage(file, max = 1600, gray = false){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { const sc = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement("canvas"); c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc); const x = c.getContext("2d"); if (gray) x.filter = "grayscale(1) contrast(1.35)"; x.drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); c.toBlob(b => b ? res(b) : rej(new Error("img")), "image/jpeg", .88); };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("img")); };
+    im.src = url;
+  });
+}
+async function aiVision(){ try { if (!window.claude || !claude.use) return null; const s = await claude.use("sample"); if (!s) return null; const lim = await s.limits().catch(() => null); return lim && lim.images ? s : null; } catch(e){ return null; } }
+const ocrOK = () => !!window.PWA_MODE;
+let OCRW = null;
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function ocrText(blob, onProg){
+  if (!window.Tesseract) await loadScript("ocr/tesseract.min.js");
+  if (!OCRW) OCRW = await Tesseract.createWorker("spa", 1, {workerPath: "ocr/worker.min.js", corePath: "ocr", langPath: "ocr/lang", gzip: true, workerBlobURL: false, logger: m => onProg && onProg(m)});
+  const {data} = await OCRW.recognize(blob); return data.text || "";
+}
+/* Lee una tabla nutricional en texto (español o inglés): por 100 g o por porción.
+   El OCR suele leer la "g" como 9 ("8g" → 89) y perder comas ("9,5 g" → 959): cada número trae lecturas
+   alternativas y se elige la combinación que cuadra con las calorías de la etiqueta. */
+function parseLabel(txt){
+  const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const lines = norm(txt).split(/\n+/).map(l => l
+    .replace(/\((?:\s*(?:g|9|mg|kcal|kj|ml|gr)\s*)\)/g, " ")
+    .replace(/(\d)\s*,\s*(\d)/g, "$1.$2")
+    .replace(/\b100\s*9\b/g, "100 g").replace(/(\d)\s+9(?=\s*[)\]]|\s*$)/g, "$1 g")
+    .replace(/(\d)[o](?=\d)/g, "$10").replace(/\bo(?=\d)/g, "0")
+    .replace(/\s+/g, " ").trim()).filter(Boolean);
+  const all = lines.join("\n");
+  const toks = l => { const s = l.replace(/\d+(?:\.\d+)?\s*%/g, " ").replace(/\d+(?:\.\d+)?\s*mg\b/g, " "); return [...s.matchAll(/(\d+(?:\.\d+)?)/g)].map(m => m[1]); };
+  const alts = t => { const v = +t, out = [v]; if (/^\d{2,}$/.test(t)) { if (t.endsWith("9")) { const d = +t.slice(0, -1); out.push(d); if (d >= 10) out.push(d / 10); } out.push(v / 10); } return [...new Set(out)]; };
+  const pick = (re, not) => { const i = lines.findIndex(l => re.test(l) && !(not && not.test(l))); if (i < 0) return null; const label = lines[i].replace(/^[^\d]*/, ""); const t = toks(lines[i]).length ? toks(lines[i]) : toks(lines[i + 1] || ""); return t.length ? t : null; };
+  let portion = null; const pl = lines.find(l => /(tamano|porcion|racion|serving size|serving)/.test(l) && /\d\s*(g|ml)\b/.test(l));
+  if (pl) { const ms = [...pl.matchAll(/(\d+(?:\.\d+)?)\s*(g|ml)\b/g)].map(m => +m[1]).filter(v => v !== 100); if (ms.length) portion = ms[0]; }
+  const has100 = /100\s*(g|ml)\b/.test(all);
+  let kc = null;
+  { const i = lines.findIndex(l => /(calori|energ|kcal|calorie)/.test(l) && !/(grasa|fat)/.test(l));
+    if (i >= 0) { const seg = lines[i] + " " + (lines[i + 1] || ""); let v = [...seg.matchAll(/(\d+(?:\.\d+)?)\s*kcal/g)].map(m => +m[1]);
+      if (!v.length) { const kj = [...seg.matchAll(/(\d+(?:\.\d+)?)\s*kj/g)].map(m => +m[1] / 4.184); v = kj.length ? kj : toks(lines[i]).map(Number); }
+      kc = v.length ? v : null; } }
+  const fat = pick(/(grasa total|grasas totales|total fat|\bgrasas?\b|lipidos|\bfat\b)/, /(satur|trans|mono|poli|poly|calori)/);
+  const carb = pick(/(carbohidrato|hidratos de carbono|carbohydrate|\bcarbs?\b)/);
+  const prot = pick(/(prote)/);
+  const cols = Math.max(...[kc, fat, carb, prot].map(a => (a || []).length), 0);
+  const hdr = lines.find(l => /100\s*(g|ml)/.test(l) && /(porcion|racion|serving)/.test(l));
+  const first100 = hdr ? hdr.search(/100\s*(g|ml)/) < hdr.search(/(porcion|racion|serving)/) : true;
+  let base, col = 0;
+  if (cols >= 2 && has100) { base = "100"; col = first100 ? 0 : 1; }
+  else base = portion && !/(por|per|cada|en)\s*100\s*(g|ml)/.test(all) ? "porcion" : "100";
+  const at = a => a && a.length ? a[Math.min(col, a.length - 1)] : null;
+  const k = kc ? kc[Math.min(col, kc.length - 1)] : null;
+  const cap = base === "100" ? 100 : (portion || 1000);
+  const opts = [prot, carb, fat].map(a => { const t = at(a); return t == null ? [null] : alts(String(t)); });
+  let best = null;
+  for (const p of opts[0]) for (const c of opts[1]) for (const f of opts[2]) {
+    const vals = [p, c, f].filter(v => v != null);
+    let cost = 0; vals.forEach(v => { if (v > cap) cost += 10; }); if (base === "100" && vals.reduce((a, v) => a + v, 0) > 105) cost += 10;
+    if (k) cost += Math.abs(4 * (p || 0) + 4 * (c || 0) + 9 * (f || 0) - k) / Math.max(k, 1);
+    cost += [p, c, f].reduce((a, v, i) => a + (v != null && v !== opts[i][0] ? .03 : 0), 0);
+    if (!best || cost < best.cost) best = {cost, p, c, f};
+  }
+  const r1 = v => v == null ? null : Math.round(v * 10) / 10;
+  return {base, portion, k: k == null ? null : Math.round(k), p: r1(best.p), c: r1(best.c), f: r1(best.f)};
+}
+/* ---- Hoja para agregar comida ---- */
+let FD = null;
+function openFood(o){ FD = Object.assign({mode: "menu", meal: nowMeal(), lines: [], photo: null}, o); renderFood(); }
+function foodMealChips(){ return `<div class="opts" role="radiogroup" aria-label="Comida">${Object.entries(MEAL_N).map(([k, l]) => `<label class="opt"><input type="radio" name="fdMeal" value="${k}" ${FD.meal === k ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>`; }
+function recentFoods(){ const seen = new Set(), out = []; Object.keys(S.intake || {}).sort().reverse().forEach(d => (S.intake[d] || []).slice().reverse().forEach(e => { if (!seen.has(e.name) && out.length < 8) { seen.add(e.name); out.push(e); } })); return out; }
+function renderFood(){
+  const hdr = t => `<div class="grab"><div><div class="eyebrow">Comida de hoy</div><h2>${t}</h2></div><button class="btn small" data-close>Cerrar</button></div>`;
+  const photoIn = id => `<input type="file" id="${id}" accept="image/*" hidden>`;
+  let html = "";
+  if (FD.mode === "menu") {
+    const rec = recentFoods();
+    html = hdr("Agregar comida") + `<div class="stack">${foodMealChips()}
+      <div class="stack" style="gap:8px">
+        <label class="btn big block" style="justify-content:flex-start;gap:12px">${photoIn("fdLabelIn")}<span><b>Foto de la etiqueta</b><br><span class="small muted" style="font-weight:400">Productos empacados: lee la tabla nutricional</span></span></label>
+        <label class="btn big block" style="justify-content:flex-start;gap:12px">${photoIn("fdPlateIn")}<span><b>Foto del plato</b><br><span class="small muted" style="font-weight:400">Estima los alimentos y las porciones</span></span></label>
+        <button class="btn big block" id="fdManual" style="justify-content:flex-start"><span><b>Escribir los ingredientes</b><br><span class="small muted" style="font-weight:400">Busca alimentos y di cuánto comiste</span></span></button>
+      </div>
+      ${rec.length ? `<div><div class="eyebrow" style="margin-bottom:6px">Repetir algo reciente</div><div class="opts">${rec.map((e, i) => `<button class="btn small" data-rec="${i}">${esc(e.name)} · ${fmt(e.g, 0)} g</button>`).join("")}</div></div>` : ""}</div>`;
+    openSheet(html, sh => {
+      sh.querySelectorAll("input[name=fdMeal]").forEach(r => r.onchange = () => FD.meal = r.value);
+      sh.querySelector("#fdManual").onclick = () => { FD.mode = "manual"; renderFood(); };
+      sh.querySelector("#fdLabelIn").onchange = e => e.target.files[0] && doLabel(e.target.files[0]);
+      sh.querySelector("#fdPlateIn").onchange = e => e.target.files[0] && doPlate(e.target.files[0]);
+      sh.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => { const e = rec[+b.dataset.rec]; addIntake([{meal: FD.meal, name: e.name, g: e.g, k: e.k, p: e.p, c: e.c, f: e.f, src: e.src}]); closeSheet(); toast(`${e.name} agregado a ${MEAL_N[FD.meal].toLowerCase()}`); FD.after && FD.after(); });
+    });
+    return;
+  }
+  if (FD.mode === "busy") { openSheet(hdr(FD.title || "Leyendo la foto") + `${FD.photo ? `<img src="${FD.photo}" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;background:var(--sunk);margin-bottom:12px">` : ""}<div class="note" aria-live="polite" id="fdBusy">${esc(FD.busy || "Un momento…")}</div>`); return; }
+  if (FD.mode === "label") {
+    const L = FD.label;
+    html = hdr("Datos de la etiqueta") + `<div class="stack">
+      ${FD.photo ? `<img src="${FD.photo}" alt="Foto de la etiqueta" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;background:var(--sunk)">` : ""}
+      ${FD.note ? `<div class="note ${FD.noteWarn ? "warn" : ""} small">${esc(FD.note)}</div>` : ""}
+      <label class="field">Producto<input id="lbName" value="${esc(L.name || "")}" placeholder="Ej.: Yogur griego natural"></label>
+      <div class="grid2"><label class="field">Valores de la etiqueta<select id="lbBase"><option value="100" ${L.base === "100" ? "selected" : ""}>Por 100 g o ml</option><option value="porcion" ${L.base === "porcion" ? "selected" : ""}>Por porción</option></select></label><label class="field">Tamaño de la porción (g)<input id="lbPor" type="number" inputmode="decimal" value="${esc(L.portion ?? "")}" placeholder="Ej.: 150"></label></div>
+      <div class="grid2"><label class="field">Calorías (kcal)<input id="lbK" type="number" inputmode="decimal" value="${esc(L.k ?? "")}"></label><label class="field">Proteína (g)<input id="lbP" type="number" inputmode="decimal" value="${esc(L.p ?? "")}"></label><label class="field">Carbohidratos (g)<input id="lbC" type="number" inputmode="decimal" value="${esc(L.c ?? "")}"></label><label class="field">Grasas (g)<input id="lbF" type="number" inputmode="decimal" value="${esc(L.f ?? "")}"></label></div>
+      <p class="small muted" id="lbChk"></p>
+      <div class="grid2"><label class="field">¿Cuánto comiste?<input id="lbAmt" type="number" inputmode="decimal" value="${esc(L.amt ?? 1)}"></label><label class="field">Medida<select id="lbUnit"><option value="porcion">porciones</option><option value="g">gramos</option></select></label></div>
+      ${foodMealChips()}
+      <label class="row small" style="gap:8px;flex-wrap:nowrap"><input type="checkbox" id="lbSave" checked> Guardar en mis productos para la próxima vez</label>
+      <div class="note small" id="lbSum"></div>
+      <div class="row"><button class="btn" id="lbBack">Atrás</button><button class="btn primary" id="lbAdd">Agregar</button></div></div>`;
+    openSheet(html, sh => {
+      const num = id => { const v = parseFloat(sh.querySelector(id).value); return isNaN(v) ? null : v; };
+      if (!L.portion) sh.querySelector("#lbUnit").value = "g";
+      if (!L.portion && L.amt == null) sh.querySelector("#lbAmt").value = 100;
+      const calc = () => {
+        const base = sh.querySelector("#lbBase").value, por = num("#lbPor"), k = num("#lbK"), p = num("#lbP") || 0, c = num("#lbC") || 0, f = num("#lbF") || 0;
+        const f100 = base === "100" ? 1 : (por ? 100 / por : null);
+        const est = 4 * p + 4 * c + 9 * f, chk = sh.querySelector("#lbChk");
+        chk.textContent = k && est && Math.abs(est - k) / k > .25 ? `Revisa los números: con estas proteínas, carbohidratos y grasas daría unas ${fmt(est, 0)} kcal, no ${fmt(k, 0)}.` : "";
+        const amt = num("#lbAmt") || 0, unit = sh.querySelector("#lbUnit").value, g = unit === "g" ? amt : (por ? amt * por : null);
+        if (!k || !f100 || g == null) { sh.querySelector("#lbSum").textContent = !f100 ? "Escribe el tamaño de la porción para poder calcular." : unit === "porcion" && !por ? "Escribe el tamaño de la porción o cambia la medida a gramos." : "Completa las calorías."; return null; }
+        const v100 = {k: k * f100, p: p * f100, c: c * f100, f: f * f100}, tot = per(v100, g);
+        sh.querySelector("#lbSum").innerHTML = `Comiste <b>${fmt(g, 0)} g</b>: <b>${fmt(tot.k, 0)} kcal</b> · proteína ${fmt(tot.p, 0)} g · carbohidratos ${fmt(tot.c, 0)} g · grasas ${fmt(tot.f, 0)} g.`;
+        return {v100, g, tot, por};
+      };
+      sh.querySelectorAll("input,select").forEach(x => x.addEventListener("input", calc)); calc();
+      sh.querySelectorAll("input[name=fdMeal]").forEach(r => r.onchange = () => FD.meal = r.value);
+      sh.querySelector("#lbBack").onclick = () => { FD.mode = "menu"; renderFood(); };
+      sh.querySelector("#lbAdd").onclick = () => {
+        const r = calc(); if (!r) return; const name = sh.querySelector("#lbName").value.trim() || "Producto";
+        if (sh.querySelector("#lbSave").checked) { S.myFoods = (S.myFoods || []).filter(x => x.name !== name); S.myFoods.unshift({name, k: +r.v100.k.toFixed(1), p: +r.v100.p.toFixed(1), c: +r.v100.c.toFixed(1), f: +r.v100.f.toFixed(1), ...(r.por ? {u: [r.por, "porción"]} : {})}); S.myFoods = S.myFoods.slice(0, 60); }
+        addIntake([{meal: FD.meal, name, g: r.g, ...r.tot, src: "etiqueta"}]); closeSheet(); toast(`${name} agregado a ${MEAL_N[FD.meal].toLowerCase()}`); FD.after && FD.after();
+      };
+    });
+    return;
+  }
+  if (FD.mode === "manual") {
+    const db = foodDB(), tot = FD.lines.reduce((a, l) => ({k: a.k + l.k, p: a.p + l.p, c: a.c + l.c, f: a.f + l.f}), {k:0, p:0, c:0, f:0});
+    html = hdr(FD.plateMode ? "Arma tu plato" : "Escribe lo que comiste") + `<div class="stack">
+      ${FD.photo ? `<img src="${FD.photo}" alt="Foto de tu plato" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;background:var(--sunk)">` : ""}
+      ${FD.note ? `<div class="note ${FD.noteWarn ? "warn" : ""} small">${esc(FD.note)}</div>` : ""}
+      <label class="field">Busca un alimento<input id="mnQ" placeholder="Ej.: arroz, yogur griego, manzana" autocomplete="off"></label>
+      <div id="mnRes" class="stack" style="gap:6px"></div>
+      <div id="mnPick"></div>
+      ${FD.lines.length ? `<div><div class="eyebrow" style="margin-bottom:4px">Tu plato</div>${FD.lines.map((l, i) => `<div class="row between small" style="flex-wrap:nowrap;padding:5px 0;border-bottom:1px solid var(--line)"><span style="min-width:0">${esc(l.name)} · ${fmt(l.g, 0)} g <span class="muted">· ${fmt(l.k, 0)} kcal · P ${fmt(l.p, 0)} · C ${fmt(l.c, 0)} · G ${fmt(l.f, 0)}</span></span><button class="btn small ghost" data-lrm="${i}" style="min-height:30px;padding:0 10px">Quitar</button></div>`).join("")}
+        <p class="small" style="margin-top:6px"><b>Total: ${fmt(tot.k, 0)} kcal</b> · proteína ${fmt(tot.p, 0)} g · carbohidratos ${fmt(tot.c, 0)} g · grasas ${fmt(tot.f, 0)} g</p></div>` : `<p class="small muted">Agrega cada alimento con la cantidad. ¿No está en la lista? Escríbelo y usa "Agregar con mis datos".</p>`}
+      ${foodMealChips()}
+      <div class="row"><button class="btn" id="mnBack">Atrás</button><button class="btn primary" id="mnAdd" ${FD.lines.length ? "" : "disabled"}>Agregar ${FD.lines.length ? `(${fmt(tot.k, 0)} kcal)` : ""}</button></div></div>`;
+    openSheet(html, sh => {
+      const q = sh.querySelector("#mnQ"), res = sh.querySelector("#mnRes"), pickBox = sh.querySelector("#mnPick");
+      const nrm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const showPick = (name, f) => {
+        const hasU = f.u && f.u[0];
+        pickBox.innerHTML = `<div class="card stack" style="gap:8px"><b>${esc(name)}</b><span class="small muted">Por 100 g${f.st ? " " + f.st : ""}: ${fmt(f.k, 0)} kcal · P ${fmt(f.p, 1)} · C ${fmt(f.c, 1)} · G ${fmt(f.f, 1)}</span>
+          <div class="grid2"><label class="field">Cantidad<input id="mnAmt" type="number" inputmode="decimal" value="${hasU ? 1 : 100}"></label><label class="field">Medida<select id="mnU">${hasU ? `<option value="u">${esc(plural(f.u[1], 2))} (${f.u[0]} g c/u)</option>` : ""}<option value="g">gramos</option></select></label></div>
+          <button class="btn primary small" id="mnOk" style="align-self:flex-start">Agregar al plato</button></div>`;
+        pickBox.querySelector("#mnOk").onclick = () => { const a = parseFloat(pickBox.querySelector("#mnAmt").value) || 0; if (!a) return; const g = pickBox.querySelector("#mnU").value === "u" ? a * f.u[0] : a; FD.lines.push({name, g, ...per(f, g)}); renderFood(); };
+        pickBox.querySelector("#mnAmt").focus();
+      };
+      const search = () => {
+        const s = nrm(q.value.trim()); if (!s) { res.innerHTML = ""; return; }
+        const hits = Object.entries(db).filter(([n]) => nrm(n).includes(s)).sort((a, b) => (b[1].mine || 0) - (a[1].mine || 0) || nrm(a[0]).indexOf(s) - nrm(b[0]).indexOf(s)).slice(0, 8);
+        res.innerHTML = hits.map(([n, f], i) => `<button class="btn small" data-hit="${i}" style="justify-content:space-between">${esc(n)}${f.mine ? " ★" : ""}<span class="muted">${fmt(f.k, 0)} kcal/100 g</span></button>`).join("") + `<button class="btn small ghost" id="mnCustom" style="justify-content:flex-start">Agregar "${esc(q.value.trim())}" con mis datos</button>`;
+        res.querySelectorAll("[data-hit]").forEach(b => b.onclick = () => { const [n, f] = hits[+b.dataset.hit]; res.innerHTML = ""; showPick(n, f); });
+        res.querySelector("#mnCustom").onclick = () => { FD.mode = "label"; FD.label = {name: q.value.trim(), base: "100", amt: 100}; FD.note = "Escribe los valores que conozcas (por ejemplo, de la etiqueta o del empaque)."; FD.noteWarn = false; FD.photo = null; renderFood(); };
+      };
+      q.addEventListener("input", search);
+      sh.querySelectorAll("[data-lrm]").forEach(b => b.onclick = () => { FD.lines.splice(+b.dataset.lrm, 1); renderFood(); });
+      sh.querySelectorAll("input[name=fdMeal]").forEach(r => r.onchange = () => FD.meal = r.value);
+      sh.querySelector("#mnBack").onclick = () => { FD.mode = "menu"; FD.lines = []; FD.photo = null; FD.note = ""; FD.plateMode = false; renderFood(); };
+      sh.querySelector("#mnAdd").onclick = () => { if (!FD.lines.length) return; addIntake(FD.lines.map(l => ({meal: FD.meal, name: l.name, g: l.g, k: l.k, p: l.p, c: l.c, f: l.f, src: FD.plateMode ? "plato" : "manual"}))); const n = FD.lines.length; closeSheet(); toast(`${n} ${n === 1 ? "alimento agregado" : "alimentos agregados"} a ${MEAL_N[FD.meal].toLowerCase()}`); FD.after && FD.after(); };
+      if (!FD.lines.length) setTimeout(() => q.focus(), 50);
+    });
+  }
+}
+async function doLabel(file){
+  FD.photo = URL.createObjectURL(file); FD.mode = "busy"; FD.title = "Leyendo la etiqueta"; FD.busy = "Leyendo la tabla nutricional…"; renderFood();
+  const fail = msg => { FD.mode = "label"; FD.label = {base: "100", amt: null}; FD.note = msg; FD.noteWarn = true; renderFood(); };
+  try {
+    const ai = await aiVision();
+    if (ai) {
+      const img = await prepImage(file, 1600);
+      const r = await ai.json(`La imagen es la foto de un producto de comida o de su tabla nutricional. Lee los valores nutricionales. Si hay columnas "por 100 g" y "por porción", usa la de 100 g. Si la energía está solo en kJ, conviértela a kcal (÷ 4,184). Responde SOLO con JSON: {"nombre":"producto y marca si se ve","base":"100" o "porcion","porcion_g":número o null,"kcal":número,"proteina_g":número,"carbohidratos_g":número,"grasa_g":número,"legible":true o false}`, {images: [img], modelTier: "default"});
+      if (!r || r.legible === false || r.kcal == null) return fail("No pude leer bien la etiqueta. Toma la foto de frente, con buena luz, o escribe los valores aquí.");
+      FD.mode = "label"; FD.label = {name: r.nombre || "", base: r.base === "porcion" ? "porcion" : "100", portion: r.porcion_g || null, k: r.kcal, p: r.proteina_g, c: r.carbohidratos_g, f: r.grasa_g};
+      FD.note = "Revisa que los números coincidan con la etiqueta antes de agregar."; FD.noteWarn = false; renderFood(); return;
+    }
+    if (ocrOK()) {
+      const img = await prepImage(file, 2000, true);
+      const first = !OCRW;
+      const txt = await ocrText(img, m => { const el = $("#fdBusy"); if (el && m && m.status) el.textContent = /recognizing/.test(m.status) ? `Leyendo la etiqueta… ${Math.round((m.progress || 0) * 100)} %` : first ? "Preparando el lector de etiquetas (solo la primera vez, necesita internet)…" : "Preparando…"; });
+      const L = parseLabel(txt), got = [L.k, L.p, L.c, L.f].filter(v => v != null).length;
+      FD.mode = "label"; FD.label = L;
+      FD.note = got >= 3 ? "Revisa que los números coincidan con la etiqueta antes de agregar." : "Leí solo una parte de la etiqueta. Completa los datos que falten mirando la foto.";
+      FD.noteWarn = got < 3; renderFood(); return;
+    }
+    fail("Leer etiquetas desde la foto necesita la app instalada o la IA de Claude. Escribe los valores de la etiqueta aquí.");
+  } catch(e) {
+    fail(e && e.code === "not_granted" ? "No se dio permiso para usar la IA. Escribe los valores de la etiqueta aquí." : e && e.code === "rate_limited" ? "Demasiadas solicitudes seguidas. Espera un minuto o escribe los valores aquí." : "No pude leer la foto. Escribe los valores de la etiqueta aquí.");
+  }
+}
+async function doPlate(file){
+  FD.photo = URL.createObjectURL(file); FD.plateMode = true;
+  const ai = await aiVision();
+  if (!ai) { FD.mode = "manual"; FD.lines = []; FD.note = "Calcular un plato a partir de la foto necesita la IA de la versión dentro de Claude. Aquí ve la foto y agrega cada alimento con su cantidad."; FD.noteWarn = false; renderFood(); return; }
+  FD.mode = "busy"; FD.title = "Analizando tu plato"; FD.busy = "Identificando alimentos y porciones…"; renderFood();
+  try {
+    const img = await prepImage(file, 1280);
+    const r = await ai.json(`La imagen es la foto de un plato de comida para una persona. Identifica cada alimento visible y estima su peso en gramos según el tamaño del plato y de los cubiertos. Incluye aceite o salsas probables. Usa valores nutricionales estándar. Responde SOLO con JSON: {"items":[{"nombre":"alimento en español","gramos":número,"kcal":número,"proteina_g":número,"carbohidratos_g":número,"grasa_g":número}],"nota":"una frase corta sobre lo que no se puede ver o la confianza de la estimación"}`, {images: [img], modelTier: "default"});
+    const items = (r && r.items || []).filter(i => i && i.nombre && +i.gramos > 0);
+    if (!items.length) throw {code: "empty"};
+    FD.mode = "manual"; FD.lines = items.map(i => ({name: i.nombre, g: +i.gramos, k: +i.kcal || 0, p: +i.proteina_g || 0, c: +i.carbohidratos_g || 0, f: +i.grasa_g || 0}));
+    FD.note = `Estimación de la foto${r.nota ? ": " + r.nota : ""}. Quita lo que no esté y agrega lo que falte.`; FD.noteWarn = false; renderFood();
+  } catch(e) {
+    FD.mode = "manual"; FD.lines = []; FD.note = e && e.code === "not_granted" ? "No se dio permiso para usar la IA. Agrega cada alimento a mano." : "No pude estimar el plato esta vez. Agrega cada alimento a mano."; FD.noteWarn = true; renderFood();
+  }
 }
 
 /* ============ Animaciones (cinemática 2D) ============ */
@@ -1898,6 +2167,7 @@ function renderHoy(){
     ${sig ? `<div class="note warn stack" style="margin-bottom:14px;gap:8px"><b>Señal de fatiga acumulada</b><span>${esc(sig)} Una ${term("descarga", "semana de descarga")} (la mitad de series, mismo peso) suele devolverte el rendimiento.</span><div class="row"><button class="btn small primary" id="dlYes">Hacer descarga esta semana</button><button class="btn small" id="dlNo">Ahora no</button></div></div>` : ""}
     <div class="section">${heroHTML(ps, items, day)}</div>
     ${stepsCard(p)}
+    ${foodCard(p)}
     <div class="section"><h2>Ejercicios de hoy</h2><div class="stack" style="gap:8px">${items.map((ex, i) => previewRow(ex, i, ps, day)).join("")}</div>
       ${(day.ss || []).length ? `<p class="small muted">Para que todo quepa en ${p.minutes} min, algunos accesorios van en ${term("superserie", "superserie")}.</p>` : ""}</div>
     <details class="card" id="quick" style="margin-bottom:26px" ${Object.values(draft.ex).some(d => d.quick) ? "open" : ""}><summary style="cursor:pointer;font-weight:600">Registro rápido (sin rutina guiada)</summary>
@@ -1939,7 +2209,7 @@ function bindHoy(items, ps, day){
   $("#ckEdit") && ($("#ckEdit").onclick = () => openCheckin());
   $("#startWP") && ($("#startWP").onclick = () => { if (!draft.checkin) openCheckin(startWorkout); else startWorkout(); });
   $("#spPost") && ($("#spPost").onclick = () => startOnboarding(true));
-  bindSteps(renderHoy);
+  bindSteps(renderHoy); bindFood(renderHoy);
   v.querySelectorAll(".ex").forEach(card => {
     const id = card.dataset.ex, ex = EXI[id], rx = rxFor(ex, S.profile, ps.week, true), d = draft.ex[id];
     card.querySelectorAll("input[data-f]").forEach(inp => inp.addEventListener("input", () => {
