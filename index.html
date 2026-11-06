@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "5.8";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "5.9";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -2633,6 +2633,20 @@ function renderNut(){
   bindBook(); $("#bookQ") && $("#bookQ").addEventListener("input", refreshBook);
 }
 let shownRecipes = [];
+/* "La comí": pasa una receta (1 porción) al conteo de hoy, con opción de deshacer */
+const ATE = new Map();
+function ateBtn(r, meal){ const id = "a" + ATE.size; ATE.set(id, {r, meal}); return `<span class="row" style="gap:6px" data-atebox="${id}"><button class="btn primary" data-ate="${id}">La comí</button></span>`; }
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-ate],[data-ateundo]"); if (!b) return;
+  if (b.dataset.ateundo) { const d = intakeDay(), i = d.findIndex(x => x.id === b.dataset.ateundo); if (i >= 0) { d.splice(i, 1); save("intake"); } const box = b.closest("[data-atebox]"); box.innerHTML = `<button class="btn primary" data-ate="${box.dataset.atebox}">La comí</button>`; toast("Quitada del conteo de hoy"); if (tab === "hoy") renderHoy(); return; }
+  const it = ATE.get(b.dataset.ate); if (!it) return; const r = it.r, meal = MEAL_N[it.meal] ? it.meal : nowMeal();
+  const g = r.items.reduce((a, [, x]) => a + (typeof x === "number" ? x : 0), 0) || 300;
+  addIntake([{meal, name: r.title, g, k: r.m.k, p: r.m.p, c: r.m.c, f: r.m.f, src: "receta"}]);
+  const e2 = intakeDay().at(-1), tot = intakeTotals(), t = targets(S.profile);
+  b.closest("[data-atebox]").innerHTML = `<span class="chip good" style="padding:8px 12px">En tu ${MEAL_N[meal].toLowerCase()} de hoy ✓</span><button class="btn small ghost" data-ateundo="${e2.id}">Deshacer</button>`;
+  toast(`+${fmt(r.m.k, 0)} kcal · llevas ${fmt(tot.k, 0)} de ${fmt(t.kcal, 0)} hoy`);
+  if (tab === "hoy") renderHoy();
+});
 function recipeBody(r){
   const m = r.m;
   return `<div class="macros"><span><b>${fmt(m.k, 0)}</b> kcal</span><span><b>${fmt(m.p, 0)}</b> g proteína</span><span><b>${fmt(m.c, 0)}</b> g carb.</span><span><b>${fmt(m.f, 0)}</b> g grasa</span>${r.time ? `<span><b>${r.time}</b> min</span>` : ""}</div>
@@ -2647,14 +2661,14 @@ function recipeCard(r, idx){
   const saved = isSaved(r);
   return `<article class="card recipe stack" style="gap:10px"><div class="row between" style="align-items:flex-start"><h3 style="min-width:0;flex:1">${esc(r.title)}</h3><span class="chip ${r.ai ? "acc" : ""}">${r.ai ? "Idea de IA" : r.tag ? esc(r.tag) : "Calculada para ti"}</span></div>
     ${recipeBody(r)}
-    <button class="btn ${saved ? "" : "primary"}" data-save="${idx}" ${saved ? "disabled" : ""}>${saved ? "Guardada en tu recetario ✓" : "Guardar en mi recetario"}</button></article>`;
+    <div class="row">${ateBtn(r, S.meal)}<button class="btn" data-save="${idx}" ${saved ? "disabled" : ""}>${saved ? "Guardada en tu recetario ✓" : "Guardar en mi recetario"}</button></div></article>`;
 }
 function bookHTML(filter = ""){
   const f = filter.trim().toLowerCase();
   const list = S.recipes.filter(r => !f || r.title.toLowerCase().includes(f) || r.items.some(([n]) => String(n).toLowerCase().includes(f)));
   if (!S.recipes.length) return `<p class="muted small">Aún no tienes recetas guardadas. Cuando una te guste, toca "Guardar en mi recetario" y quedará aquí para siempre.</p>`;
   if (!list.length) return `<p class="muted small">Ninguna receta coincide con "${esc(filter)}".</p>`;
-  return list.map(r => `<details><summary><span>${esc(r.title)}</span><span class="small muted" style="white-space:nowrap">${fmt(r.m.k, 0)} kcal · ${fmt(r.m.p, 0)} g prot.</span></summary><div class="body stack" style="gap:10px">${recipeBody(r)}<div class="row"><span class="small muted">Guardada el ${esc(r.savedAt || "")}</span><button class="btn small ghost" data-del="${esc(r.id)}">Quitar del recetario</button></div></div></details>`).join("");
+  return list.map(r => `<details><summary><span>${esc(r.title)}</span><span class="small muted" style="white-space:nowrap">${fmt(r.m.k, 0)} kcal · ${fmt(r.m.p, 0)} g prot.</span></summary><div class="body stack" style="gap:10px">${recipeBody(r)}<div class="row">${ateBtn(r)}</div><div class="row"><span class="small muted">Guardada el ${esc(r.savedAt || "")}</span><button class="btn small ghost" data-del="${esc(r.id)}">Quitar del recetario</button></div></div></details>`).join("");
 }
 function bindBook(){
   const box = $("#bookList"); if (!box) return;
@@ -2671,7 +2685,7 @@ function showLocal(keepAI){
     const r = shownRecipes[+b.dataset.save]; if (!r || isSaved(r)) return;
     S.recipes.unshift({id: "r" + Date.now().toString(36), title: r.title, items: r.items, steps: r.steps, m: r.m, time: r.time || null, why: r.why || "", plate: r.plate || "", tummy: r.tummy || "", ai: !!r.ai, savedAt: todayISO()});
     save("recipes"); lsSet(LS_KEY, S);
-    b.textContent = "Guardada en tu recetario ✓"; b.disabled = true; b.classList.remove("primary"); refreshBook();
+    b.textContent = "Guardada en tu recetario ✓"; b.disabled = true; refreshBook();
   }));
 }
 async function genAI(){
@@ -2904,7 +2918,7 @@ function planHTML(){
   if (!S.pantry.length) return `<div class="note warn">Marca tus ingredientes para armar el plan.</div>`;
   const dp = dayPlan(new Date().getDay()), tot = dp.reduce((a, {r}) => r ? {k: a.k + r.m.k, p: a.p + r.m.p} : a, {k: 0, p: 0});
   return `<h2 style="margin-top:6px">Plan de comidas de hoy</h2><p class="small">Total: <b>${fmt(tot.k, 0)} kcal</b> y <b>${fmt(tot.p, 0)} g de proteína</b> (meta ${fmt(t.kcal, 0)} kcal y ${t.prot} g).</p>
-    ${dp.map(({meal, r}) => r ? `<details class="card"><summary style="cursor:pointer"><span class="eyebrow">${cap(meal)}</span><br><b>${esc(r.title)}</b> <span class="small muted">· ${fmt(r.m.k, 0)} kcal · ${fmt(r.m.p, 0)} g prot.</span></summary><div class="stack" style="gap:10px;margin-top:10px">${recipeBody(r)}</div></details>` : `<div class="card small muted">${cap(meal)}: agrega más ingredientes para completar esta comida.</div>`).join("")}
+    ${dp.map(({meal, r}) => r ? `<details class="card"><summary style="cursor:pointer"><span class="eyebrow">${cap(meal)}</span><br><b>${esc(r.title)}</b> <span class="small muted">· ${fmt(r.m.k, 0)} kcal · ${fmt(r.m.p, 0)} g prot.</span></summary><div class="stack" style="gap:10px;margin-top:10px">${recipeBody(r)}<div class="row">${ateBtn(r, meal)}</div></div></details>` : `<div class="card small muted">${cap(meal)}: agrega más ingredientes para completar esta comida.</div>`).join("")}
     ${tot.p < t.prot * .8 ? `<div class="note warn small">Con tus ingredientes no alcanzas la proteína. Agrega huevo, atún, pollo, fríjol o yogur a tu lista.</div>` : ""}`;
 }
 function shopHTML(){
