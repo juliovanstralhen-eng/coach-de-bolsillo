@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.1";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.2";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -907,10 +907,40 @@ function suggest(ex, rx){
   return {kg: dayAdj(lastKg), text: `Mantén ${fmt(dayAdj(lastKg))} kg y suma repeticiones (la vez pasada: ${reps}).` + soft, tone:""};
 }
 const BARMIN = id => ["sq_barra","hp_banca","hl_barra"].includes(id) || (id === "hi_rdl" && eqKind(EXI[id], equipSet(S.profile)) === "bar");
-function warmupFor(ex, kg){
-  if (!ex.comp || !kg || ex.assist) return null; const step = stepFor(ex), min = BARMIN(ex.id) ? 20 : step;
-  const a = Math.max(min, roundTo(kg * .5, step)), b = Math.max(min, roundTo(kg * .75, step));
-  return b < kg ? (a < b ? [[a, 8], [b, 4]] : [[b, 5]]) : null;
+/* Calentamiento según objetivo (evidencia: lo que más rinde es el calentamiento específico,
+   subiendo por etapas hasta cerca del peso de trabajo; el general corto solo prepara) */
+function wuStyle(p){ if (!p) return "activo"; if (isSenior(p) || special(p).mode || p.parqFlag) return "suave"; if (p.goal === "fuerza") return "fuerza"; if (p.goal === "masa" || p.twice === "strhyp") return "masa"; return "activo"; }
+function warmupFor(ex, kg, first = true, p = S.profile){
+  if (!ex.comp || !kg || ex.assist) return null; const step = stepFor(ex), min = BARMIN(ex.id) ? 20 : step, R = f => Math.max(min, roundTo(kg * f, step)), st = wuStyle(p);
+  const plan = st === "fuerza" ? (first ? [[.4, 5], [.6, 3], [.75, 2], [.85, 1]] : [[.6, 3], [.8, 2]])
+    : st === "masa" ? (first ? [[.5, 8], [.8, 4]] : [[.75, 4]])
+    : st === "suave" ? (first ? [[.5, 10]] : null)
+    : (first ? [[.5, 10], [.75, 5]] : null);
+  if (!plan) return null;
+  const out = []; plan.forEach(([f, r]) => { const k = R(f); if (k < kg) { if (out.length && out.at(-1)[0] === k) out[out.length - 1] = [k, r]; else out.push([k, r]); } });
+  return out.length ? out : null;
+}
+/* Qué ejercicios llevan series de aproximación: 1 = primero del día, 2 = posteriores */
+function needsWarm(items, i, p = S.profile){
+  const ex = items[i], eq = equipSet(p), heavy = e => e.comp && usesKg(e, eq) && !e.assist; if (!ex || !heavy(ex)) return 0;
+  if (i === firstKgComp(items)) return 1;
+  const st = wuStyle(p); if (st === "fuerza") return 2;
+  if (st === "masa") { const low = e => LOWER.has(e.pat); return items.slice(0, i).filter(heavy).some(e => low(e) === low(ex)) ? 0 : 2; }
+  return 0;
+}
+const wuFor = (items, i, kg) => { const n = needsWarm(items, i); return n ? warmupFor(items[i], kg, n === 1) : null; };
+/* Calentamiento general: minutos, intensidad y movilidad según objetivo y músculos del día */
+function genWarm(p, items){
+  const st = wuStyle(p), eq = equipSet(p), mins = {fuerza: 6, masa: 5, activo: 6, suave: 8}[st];
+  const cardio = p.place === "gym" ? ["caminadora", "bici", "eliptica"].filter(x => eq.has(x)).map(x => ({caminadora: "caminadora", bici: "bicicleta", eliptica: "elíptica"}[x])) : [];
+  const how = cardio.length ? `En ${cardio.join(", ").replace(/, ([^,]*)$/, " o $1")}` : st === "suave" ? "Marcha en el sitio moviendo los brazos" : "Marcha en el sitio, pasos laterales y rodillas arriba suaves";
+  const pace = {fuerza: "suave a moderado, sin cansarte", masa: "suave: puedes conversar", activo: "moderado: respiras más rápido pero puedes hablar", suave: "muy suave, subiendo poco a poco"}[st];
+  const low = items.some(e => LOWER.has(e.pat)), up = items.some(e => !LOWER.has(e.pat) && !["co","cardio","hiit","bal","pf"].includes(e.pat));
+  const mob = [];
+  if (low) mob.push(st === "suave" ? "Balanceo de pierna apoyado en una pared · 8 por lado" : "Balanceo de pierna adelante-atrás · 10 por lado", "Sentadilla sin peso · 10", "Bisagra de cadera (manos en la cadera) · 10");
+  if (up) mob.push("Círculos de brazos · 10 adelante y 10 atrás", eq.has("bandas") || eq.has("polea") ? "Separación de banda o polea ligera · 15" : "Flexiones contra la pared · 10", "Rotación de tronco · 5 por lado");
+  if (!mob.length) mob.push("Círculos de cadera · 10", "Gato-vaca en cuatro apoyos · 8");
+  return {mins, how, pace, mob, st};
 }
 function weeklyVolume(plan, p, week){
   const v = Object.fromEntries(MUSCLES.map(m => [m, 0]));
@@ -2397,7 +2427,7 @@ function renderHoy(){
 function exCard(ex, i, ps, day){
   const p = S.profile, {rx, sg, d} = ensureDraft(ex, ps), kg = usesKg(ex, equipSet(p)), pi = partnerOf(day, i), items = sessionItems(day, p);
   const alts = candidates(ex.pat, p).filter(e => e.id !== ex.id && painCount(e.id) < 2);
-  const uLab = {reps:"Reps", s:"Seg.", min:"Min", resp:"Resp."}[rx.unit], wu = i === firstKgComp(items) ? warmupFor(ex, +d.sets[0].kg || sg.kg) : null;
+  const uLab = {reps:"Reps", s:"Seg.", min:"Min", resp:"Resp."}[rx.unit], wu = wuFor(items, i, +d.sets[0].kg || sg.kg);
   return `<article class="card ex" data-ex="${ex.id}">
     <div class="ex-head"><div class="ex-title"><div class="eyebrow">${i + 1}${pi >= 0 ? ` · Superserie con ${esc(items[pi].n)}` : ` · ${esc(Object.keys(ex.g).filter(m => ex.g[m] >= 1).join(", ") || "General")}`}</div><h3>${esc(ex.n)} <span class="chip good okchip">Hecho</span></h3></div><button class="btn small" data-guide="${ex.id}">Ver cómo</button></div>
     ${rxChips(rx)}
@@ -2528,6 +2558,7 @@ function renderPlan(){
       <a class="btn" target="_blank" rel="noopener" href="${evWeigh}">Pesaje semanal (${WDL[wds[0] - 1]} 7:00)</a>
       <a class="btn" target="_blank" rel="noopener" href="${evShop}">Compras de comida (domingo 10:00)</a>
       <p class="small muted">Se abren en Google Calendar. En iPhone u Outlook, agrega tu cuenta de Google al calendario del celular o crea el evento repetido a mano: ${wds.map(w => WDL[w - 1]).join(", ")} a las ${esc(p.time || "18:00")}${tw ? ` y a las ${esc(p.time2 || "13:00")}` : ""}.</p></div></div>
+    ${wpPrefsHTML()}
     ${window.PWA_MODE ? pwaSectionHTML() : ""}
     <div class="section"><h2>Tus datos</h2><div class="card stack">
       <p class="small muted">Guarda una copia completa o exporta tus sesiones para verlas en Excel.</p>
@@ -2537,6 +2568,7 @@ function renderPlan(){
   $("#view").querySelectorAll("[data-guide]").forEach(b => b.addEventListener("click", () => openGuide(b.dataset.guide)));
   $("#editP").addEventListener("click", () => startOnboarding(true));
   if (window.PWA_MODE) bindPwaSection();
+  $("#view").querySelectorAll("[data-wpp]").forEach(b => b.onclick = () => { const [k, v] = b.dataset.wpp.split(":"); setWpPref(k, v === "true" ? true : v === "false" ? false : +v); renderPlan(); });
   $("#icsBtn") && ($("#icsBtn").onclick = () => {
     const txt = icsFile(S.profile);
     if (!isIOS()) return saveFile("gymnos-recordatorios.ics", txt);
@@ -3022,6 +3054,16 @@ function supplementsHTML(sp){
 /* ============ App instalable (solo en la versión PWA) ============ */
 const PWA = {deferred: null};
 const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function wpPrefsHTML(){
+  const w = wpSet(), g = genWarm(S.profile, []), seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button data-wpp="${k}:${v}" aria-pressed="${String(w[k] === v || (k === "gen" && v === true && w.gen !== false))}">${l}</button>`).join("")}</div>`;
+  const st = wuStyle(S.profile), wdesc = {fuerza: "Fuerza: 4 series de aproximación en el primer básico (40 → 60 → 75 → 85 %) y 2 en los siguientes.", masa: "Masa: 2 series de aproximación en el primer básico (50 % y 80 %) y 1 al cambiar de pierna a torso o al revés.", activo: "Tu objetivo: 2 series de aproximación en el primer básico (50 % y 75 %).", suave: "1 serie ligera en el primer ejercicio con peso, y calentamiento general más largo."}[st];
+  return `<div class="section"><h2>Rutina guiada</h2><div class="card stack">
+    <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Calentamiento general</b><br><span class="muted">${g.mins} min antes del primer ejercicio, más movilidad</span></span>${seg("gen", [[true, "Sí"], [false, "No"]])}</div>
+    <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Tiempo para acomodarte</b><br><span class="muted">Antes de cada ejercicio</span></span>${seg("prep", [[15, "15 s"], [30, "30 s"], [0, "No"]])}</div>
+    <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Contar en voz alta</b></span>${seg("voice", [[true, "Sí"], [false, "No"]])}</div>
+    <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Ritmo automático</b><br><span class="muted">Cuenta las repeticiones al tempo de la animación</span></span>${seg("auto", [[true, "Sí"], [false, "No"]])}</div>
+    <p class="small muted">${wdesc}</p></div></div>`;
+}
 function pwaSectionHTML(){
   const ios = isIOS(), st = isStandalone(), np = NOTIF.perm();
   return `<div class="section"><h2>App en tu celular</h2><div class="card stack">
@@ -3167,7 +3209,7 @@ function startWorkout(){
   if (!draft.t0) { draft.t0 = Date.now(); saveDraft(); }
   items.forEach(ex => ensureDraft(ex, ps));
   WP = {ps, day, items, i:0, j:0, phase:"set", reps:0, extra:0, setStart:Date.now(), t0:draft.t0, restEnd:0, restTotal:60, metro:false, repStart:0, cue:0, flash:"", calibNow:false, lastEx:null};
-  if (!wpFindNext()) WP.phase = "done"; else wpPrepSet();
+  if (!wpFindNext()) WP.phase = "done"; else if (wpSet().gen !== false) { WP.phase = "gen"; WP.gen = genWarm(S.profile, items); WP.genEnd = 0; WP.genDone = {}; } else wpPrepSet();
   try { WP.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
   try { audioSessionTransient(); if (window.speechSynthesis) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch(e){}
   stopRest(); document.body.style.overflow = "hidden";
@@ -3185,10 +3227,11 @@ function speak(t, force){
     u.lang = v ? v.lang : "es-ES"; if (v) u.voice = v; u.rate = 1.12; u.volume = 1; ss.speak(u);
   } catch(e){}
 }
+function wpPrepSetR(){ wpPrepSet(); renderWP(); }
 function wpPrepSet(){
   const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.metro = false; WP.calibNow = c.kg && !c.ex.assist && !lastEntries(c.ex.id, 1).length && !c.d.calibrated && !c.d.sets.some(x => x.ok);
   const pr = wpSet().prep;
-  const wu = WP.i === firstKgComp(WP.items) && WP.j === 0 && !WP.calibNow && !c.d.sets.some(x => x.ok) ? warmupFor(c.ex, +c.st.kg) : null;
+  const wu = WP.j === 0 && !WP.calibNow && !c.d.sets.some(x => x.ok) ? wuFor(WP.items, WP.i, +c.st.kg) : null;
   WP.warm = wu && wu.length ? wu : null;
   if (WP.warm) { WP.phase = "prep"; WP.prepWait = true; WP.prepTotal = Math.max(pr, 15); WP.prepEnd = 0; WP.lastCount = null; }
   else if (pr > 0 && WP.lastEx !== c.ex.id && !c.d.sets.some(x => x.ok)) { WP.phase = "prep"; WP.prepWait = false; WP.prepTotal = pr; WP.prepEnd = Date.now() + pr * 1000; WP.lastCount = null; }
@@ -3248,13 +3291,23 @@ function renderWP(){
         ${WP.flash ? `<div class="note" style="width:100%;text-align:left">${esc(WP.flash)}</div>` : ""}
         ${NOTIF.can() && NOTIF.perm() === "default" && !S.notifAsked ? `<div class="card stack" style="width:100%;text-align:left;gap:8px" id="nPrime"><b>¿Te avisamos cuando termine el descanso?</b><span class="small muted">Así puedes mirar el chat o la música sin perder la cuenta.</span><div class="row"><button class="btn small primary" id="nYes">Sí, avisarme</button><button class="btn small ghost" id="nNo">Ahora no</button></div></div>` : ""}
         <div class="card" style="width:100%;text-align:left"><div class="eyebrow">Sigue</div><h3>${esc(c.ex.n)} · ${c.rx.unit === "min" ? "cardio" : `serie ${WP.j + 1} de ${c.rx.sets}`}</h3><p class="small muted">${c.kg && c.st.kg !== "" ? fmt(+c.st.kg) + " kg × " : ""}${rxTxt}${c.rx.rir != null ? ` · RIR ${c.rx.rir}` : ""}</p><p class="small" style="margin-top:8px"><b>Clave técnica:</b> ${esc(g.steps[WP.j % g.steps.length])}</p></div></div>`;
+    } else if (WP.phase === "gen") {
+      const g = WP.gen, tot = g.mins * 60, left = WP.genEnd ? Math.max(0, (WP.genEnd - Date.now()) / 1000) : tot, R = 62, C = 2 * Math.PI * R;
+      body = `<div class="stack" style="gap:12px"><div class="eyebrow">Antes de empezar</div><h2>Calentamiento general</h2>
+        <p class="small muted">${{fuerza: "Para fuerza: corto y suave, para llegar fresco a las series pesadas.", masa: "Para masa: corto y suave; lo que más prepara son las series de aproximación que vienen después.", activo: "Para tu objetivo: a ritmo moderado, que también suma gasto.", suave: "Más largo y suave: prepara articulaciones y equilibrio."}[g.st]}</p>
+        <div class="row" style="gap:14px;flex-wrap:nowrap"><svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="11"/><circle id="genArc" cx="75" cy="75" r="${R}" fill="none" stroke="var(--go)" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / tot)}" transform="rotate(-90 75 75)"/><text id="genT" x="75" y="88" text-anchor="middle" font-size="38" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${mmss(left)}</text></svg>
+          <div class="stack" style="gap:4px;min-width:0"><b>${g.mins} min · ${esc(g.how)}</b><span class="small muted">Ritmo ${esc(g.pace)}.</span></div></div>
+        ${WP.genEnd ? "" : `<button class="btn primary big block" id="genGo">Empezar ${g.mins} min</button>`}
+        <div class="card stack" style="gap:6px"><b>Luego, movilidad (1–2 min)</b>${g.mob.map((m, i) => `<label class="row small" style="gap:10px;flex-wrap:nowrap"><input type="checkbox" data-mob="${i}" ${WP.genDone[i] ? "checked" : ""}> ${esc(m)}</label>`).join("")}
+          <span class="small muted">Sin estiramientos largos antes de las pesas: déjalos para el final.</span></div>
+        <div class="row" style="justify-content:space-between"><button class="btn small ghost" id="genNever">No volver a mostrar</button><button class="btn ${WP.genEnd ? "primary" : ""}" id="genSkip">${WP.genEnd ? "Listo, al primer ejercicio" : "Saltar calentamiento"}</button></div></div>`;
     } else if (WP.phase === "prep") {
       const left = WP.prepWait ? WP.prepTotal : Math.max(0, (WP.prepEnd - Date.now()) / 1000), R = 70, C = 2 * Math.PI * R, pr = wpSet().prep;
       body = `<div class="stack" style="gap:12px"><div class="eyebrow">Prepárate · Ejercicio ${WP.i + 1} de ${WP.items.length}</div>
         <div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h2 style="min-width:0">${esc(c.ex.n)}</h2><button class="btn small" id="wpGuide">Ver técnica</button></div>
         <canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}"></canvas>
         <div class="row" style="justify-content:center;gap:16px;flex-wrap:nowrap"><svg width="170" height="170" viewBox="0 0 170 170" aria-hidden="true"><circle cx="85" cy="85" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"/><circle id="prepArc" cx="85" cy="85" r="${R}" fill="none" stroke="var(--go)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.prepTotal)}" transform="rotate(-90 85 85)"/><text id="prepT" x="85" y="102" text-anchor="middle" font-size="50" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${Math.ceil(left)}</text></svg>
-          <div class="stack" style="gap:6px;min-width:0">${WP.prepWait ? `<b>Primero, calienta</b><span class="small">${WP.warm.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" y ")}, sin llegar al cansancio.</span><span class="small muted">Cuando termines toca "Ya calenté": tendrás ${WP.prepTotal} s para cargar el peso de trabajo.</span>` : `<b>Acomódate</b><span class="small muted">${isMachine(c.ex) ? "Ajusta el asiento y los apoyos, pon el peso y toma posición." : "Toma el peso, colócate y respira."} Al llegar a cero empieza la serie.</span>`}</div></div>
+          <div class="stack" style="gap:6px;min-width:0">${WP.prepWait ? `<b>${WP.i === firstKgComp(WP.items) ? "Primero, calienta" : "Series de aproximación"}</b><span class="small">${WP.warm.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" → ")}, descansando 1 min entre ellas y sin llegar al cansancio.</span><span class="small muted">Cuando termines toca "Ya calenté": tendrás ${WP.prepTotal} s para cargar el peso de trabajo.</span>` : `<b>Acomódate</b><span class="small muted">${isMachine(c.ex) ? "Ajusta el asiento y los apoyos, pon el peso y toma posición." : "Toma el peso, colócate y respira."} Al llegar a cero empieza la serie.</span>`}</div></div>
         ${c.kg ? `<div class="stepper"><button class="rbtn" id="kgm" aria-label="Menos peso">−</button><div style="text-align:center;flex:1"><div class="num" style="font-size:34px" id="wpKg">${c.st.kg === "" ? "–" : fmt(+c.st.kg)}</div><div class="small muted">kg${c.ex.assist ? " de asistencia" : ""} · ${c.rx.lo}–${c.rx.hi} ${UNIT_L[c.rx.unit]}</div></div><button class="rbtn" id="kgp" aria-label="Más peso">+</button></div>` : ""}
         <div class="row" style="justify-content:center">${WP.prepWait ? `<button class="btn primary big" id="ppWarm">Ya calenté</button><button class="btn" id="ppGo">Empezar la serie ya</button>` : `<button class="btn" id="ppAdd">+15 s</button><button class="btn primary" id="ppGo">Estoy listo</button>`}</div>
         ${busyParts(c.ex).length ? `<div class="row" style="justify-content:center"><button class="btn small ghost" id="wpBusy">Máquina ocupada</button><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>` : `<div class="row" style="justify-content:center"><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>`}
@@ -3265,7 +3318,7 @@ function renderWP(){
       body = `<div class="stack"><div class="eyebrow">Comprobando tu RIR · ${esc(c.ex.n)}</div><h2>Sigue hasta no poder más</h2><p class="small muted">Dijiste que te quedaban ${WP.est === 4 ? "4 o más" : WP.est}. Haz repeticiones con buena técnica; para cuando ya no salga una más.</p>
         <button class="counter" id="rcCount" aria-label="Repeticiones extra"><span id="rcN">${WP.extra}</span><small>repeticiones extra</small></button><button class="btn primary big block" id="rcEnd">No puedo más</button></div>`;
     } else {
-      const items = WP.items, pi = partnerOf(WP.day, WP.i), wu = WP.i === firstKgComp(items) && WP.j === 0 && !WP.calibNow && !c.d.sets.some(x => x.ok) ? warmupFor(c.ex, +c.st.kg) : null;
+      const items = WP.items, pi = partnerOf(WP.day, WP.i), wu = WP.j === 0 && !WP.calibNow && !c.d.sets.some(x => x.ok) ? wuFor(items, WP.i, +c.st.kg) : null;
       body = `<div class="stack" style="gap:12px"><div class="eyebrow">Ejercicio ${WP.i + 1} de ${items.length}${c.rx.unit !== "min" ? ` · Serie ${WP.j + 1} de ${c.rx.sets}` : ""}${pi >= 0 ? " · Superserie" : ""}</div>
         <div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h2 style="min-width:0">${esc(c.ex.n)}</h2><button class="btn small" id="wpGuide">Ver técnica</button></div>
         <canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}"></canvas>
@@ -3286,6 +3339,13 @@ function bindWP(){
   const c = wpCur();
   if (WP.phase === "rest") { const ny = q("#nYes"); if (ny) { ny.onclick = async () => { const r = await NOTIF.ask(); toast(r === "granted" ? "Listo: te avisaremos al terminar cada descanso" : "Sin avisos: igual suena y vibra con la app abierta"); renderWP(); }; q("#nNo").onclick = () => { S.notifAsked = true; save(); renderWP(); }; }
     q("#rAdd").onclick = () => { WP.restEnd += 30000; WP.restTotal += 30; }; q("#rSkip").onclick = () => { WP.flash = ""; wpPrepSet(); renderWP(); }; return; }
+  if (WP.phase === "gen") {
+    if (q("#genGo")) q("#genGo").onclick = () => { WP.genEnd = Date.now() + WP.gen.mins * 60000; speak("Calentamiento en marcha"); renderWP(); };
+    el.querySelectorAll("[data-mob]").forEach(b => b.onchange = () => { WP.genDone[b.dataset.mob] = b.checked; });
+    q("#genSkip").onclick = () => wpPrepSetR();
+    q("#genNever").onclick = () => { setWpPref("gen", false); toast("Puedes volver a activarlo en Plan › Rutina guiada"); wpPrepSetR(); };
+    return;
+  }
   if (WP.phase === "prep") {
     startAnim(q("#wpAnim"), c.ex, null); q("#wpGuide").onclick = () => openGuide(c.ex.id);
     const setKg = v => { const nv = Math.max(0, Math.round(v * 4) / 4); c.st.kg = nv; c.d.touched = true; for (let k = WP.j + 1; k < c.d.sets.length; k++) { const x = c.d.sets[k]; if (!x.ok) x.kg = nv; } saveDraft(); q("#wpKg").textContent = fmt(nv); };
@@ -3359,6 +3419,11 @@ function tickWP(){
       if (e >= 0 && WP.cue === 0 && e >= half) { WP.cue = 1; beep(520, .07); }
       if (e >= rep) { WP.repStart += rep; WP.cue = 0; WP.reps++; if (n) n.textContent = WP.reps; beep(880, .05); speak(WP.reps === c.rx.hi ? `${ES_NUM[WP.reps] || WP.reps}. Meta cumplida` : (ES_NUM[WP.reps] || String(WP.reps))); }
     }
+  }
+  if (WP.phase === "gen" && WP.genEnd) {
+    const left = (WP.genEnd - Date.now()) / 1000, t = el.querySelector("#genT"), a = el.querySelector("#genArc"), tot = WP.gen.mins * 60;
+    if (t) { t.textContent = mmss(Math.max(0, left)); a.setAttribute("stroke-dashoffset", 2 * Math.PI * 62 * (1 - Math.max(0, left) / tot)); }
+    if (left <= 0 && !WP.genRang) { WP.genRang = true; restEndAlert(); speak("Calentamiento listo. Haz la movilidad y empezamos."); }
   }
   if (WP.phase === "prep" && !WP.prepWait) {
     const left = (WP.prepEnd - Date.now()) / 1000, t = el.querySelector("#prepT"), a = el.querySelector("#prepArc");
