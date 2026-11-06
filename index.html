@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.0";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.1";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -164,7 +164,9 @@ input[type=checkbox]{width:20px;height:20px;flex:none}
 .stepbars.l{height:auto;align-items:start}
 details.card>summary{list-style-position:inside}
 label.field{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.grid2>*{min-width:0}
+input[type=time],input[type=date]{min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;text-align:left}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .opts{display:flex;flex-wrap:wrap;gap:8px}
 .opt{position:relative}
@@ -175,6 +177,7 @@ label.field{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weigh
 .bigopt span{flex-direction:column;align-items:flex-start;justify-content:center;border-radius:var(--r);padding:10px 14px;min-height:64px;width:100%}
 .bigopt{flex:1 1 140px}
 .bigopt small{font-weight:400;font-size:12.5px;opacity:.8}
+.opt .rec{font-style:normal;display:inline-block;background:var(--good-soft);color:var(--good);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:6px;vertical-align:1px}
 /* Tabs */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 .tabs nav{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
@@ -474,6 +477,10 @@ plank:{steps:["Antebrazos bajo los hombros, cuerpo en línea recta.","Aprieta gl
  feel:"Todo el abdomen.",
  errors:["Cadera hundida.","Cadera muy alta.","Aguantar la respiración."],
  diag:[["Espalda baja","Cadera hundida.","Aprieta glúteos y lleva la pelvis atrás; si no puedes, apoya las rodillas."],["Hombros","Codos adelantados.","Codos justo debajo de los hombros."]]},
+hiit:{steps:["Calienta 3 minutos a ritmo suave.","30 segundos fuerte: bicicleta, elíptica, trote rápido o marcha en el sitio con brazos (sin saltos si estás empezando).","60–90 segundos suave para recuperar la respiración.","Repite 6–10 rondas y termina con 2 minutos suaves."],
+ feel:"Respiración muy agitada en los tramos fuertes; piernas trabajando. En los suaves recuperas.",
+ errors:["Ir fuerte todo el tiempo: entonces no son intervalos.","Saltar con mala técnica cuando estás cansado.","Hacerlo con dolor en el pecho, mareo o falta de aire extrema."],
+ diag:[["Rodillas o tobillos","Mucho impacto.","Usa bicicleta o elíptica en lugar de saltos o trote."],["Mareo o náuseas","Demasiada intensidad o sin comer.","Baja la intensidad y come algo ligero 1–2 h antes."],["Dolor en el pecho","Señal de alarma.","Para de inmediato y consulta a un médico."]]},
 walk:{steps:["Ritmo en el que puedas hablar en frases cortas.","Postura alta, brazos acompañando.","En caminadora: inclinación 5–10 % y sin sujetarte de las barras.","20–30 min al final de la sesión o en días libres."],
  feel:"Piernas y respiración más rápida, sin quedarte sin aliento.",
  errors:["Sujetarte de la caminadora.","Ir tan rápido que no puedes hablar."],
@@ -553,7 +560,8 @@ const EX = [
  {id:"co_birddog",n:"Bird dog (cuadrupedia)",pat:"co",eq:[""],kg:0,gd:"birddog",an:"birddog",g:{Core:1},hl:{abs:1,glutes:.55,lats:.55}},
  {id:"bal_una",n:"Equilibrio en una pierna",pat:"bal",eq:[""],kg:0,sec:1,gd:"balance",an:"balance",g:{},hl:{glutes:1,calf:.55,abs:.55}},
  {id:"co_suelo",n:"Respiración y suelo pélvico",pat:"pf",eq:[""],kg:0,gd:"pelvic",an:"pelvic",g:{},hl:{abs:1}},
- {id:"cardio",n:"Caminata inclinada o trote suave",pat:"cardio",eq:[""],kg:0,gd:"walk",an:"walk",g:{}}
+ {id:"cardio",n:"Caminata inclinada o trote suave",pat:"cardio",eq:[""],kg:0,gd:"walk",an:"walk",g:{}},
+ {id:"hiit",n:"Intervalos (HIIT)",pat:"hiit",eq:[""],kg:0,gd:"hiit",an:"walk",g:{},tags:["adv"]}
 ];
 EX.forEach(e => { e.tags = e.tags || []; if (e.adv) e.tags.push("adv"); });
 const EXI = Object.fromEntries(EX.map(e => [e.id, e]));
@@ -743,7 +751,19 @@ function splitTwo(items){
   const order = gs => items.filter(id => gs.some(g => g.ids.includes(id)));
   return [order(best.A), order(best.B)];
 }
-const TWICE_MODES = {split:"Repartir los ejercicios del día", cardio:"Fuerza en una, cardio y core en la otra"};
+const TWICE_MODES = {split:"Repartir los ejercicios del día", cardio:"Cardio suave y core", hiit:"Intervalos (HIIT) y core", strhyp:"Fuerza + masa", core:"Core, equilibrio y suelo pélvico"};
+const TWICE_DESC = {
+  cardio:"1ª: tu rutina. 2ª: 20–30 min de cardio a ritmo de conversación y un ejercicio de core. Suma gasto sin cansar tus músculos.",
+  hiit:"1ª: tu rutina. 2ª: 12–20 min de intervalos (30 s fuerte, 60–90 s suave) y core. Más gasto en menos tiempo.",
+  strhyp:"1ª: básicos pesados (pocas repeticiones, descansos largos) para ganar fuerza. 2ª: accesorios de 10–15 repeticiones para ganar masa.",
+  core:"1ª: tu rutina. 2ª: sesión suave de core, equilibrio y suelo pélvico. Ideal para salud, espalda y estabilidad."};
+/* Qué 2ª sesión conviene según el objetivo (la primera es la recomendada) */
+function twiceOptions(p){
+  const safe = isSenior(p) || !!p.special || !!special(p).mode || !!p.parqFlag;
+  const byGoal = {perder:["cardio","hiit","strhyp"], masa:["strhyp","cardio"], fuerza:["strhyp","cardio"], tonificar:["hiit","cardio","strhyp"], salud:["cardio","core"]}[p.goal] || ["cardio","strhyp"];
+  let o = byGoal.slice(); if (safe) o = o.filter(k => k !== "hiit" && k !== "strhyp").concat(["cardio","core"]);
+  return [...new Set(o)];
+}
 const isTwice = p => !!(p && p.twice);
 function partLabel(t, k){ const h = +String(t || "").split(":")[0]; return isNaN(h) ? `${k}ª sesión` : h < 11 ? "mañana" : h < 15 ? "mediodía" : h < 19 ? "tarde" : "noche"; }
 const withCardio = p => ["perder","tonificar","salud"].includes(p.goal) || !!special(p).mode;
@@ -770,17 +790,24 @@ function buildPlan(p){
     }
     const bal = items.filter(id => EXI[id].pat === "bal"), rest = items.filter(id => EXI[id].pat !== "bal");
     let A, B, ssA, ssB = [];
-    if (p.twice === "cardio") {
-      A = [...bal, ...rest]; ssA = fitTime(A, n);
-      const core = candidates("co", p).find(e => !A.includes(e.id));
-      B = core ? [core.id] : [];
-    } else {
+    const cores = candidates("co", p).map(e => e.id);
+    if (p.twice === "split") {
       [A, B] = splitTwo(rest); A = [...bal, ...A];
       ssA = fitTime(A, n); ssB = fitTime(B, n);
+      if (withCardio(p)) B.push("cardio");
+    } else if (p.twice === "strhyp") {
+      /* Fuerza + masa: básicos pesados en la 1ª, accesorios para masa en la 2ª */
+      A = [...bal, ...rest.filter(id => EXI[id].comp)]; B = rest.filter(id => !EXI[id].comp);
+      if (!B.length) B = cores.slice(0, 1);
+      ssA = fitTime(A, n); ssB = fitTime(B, n);
+    } else {
+      A = [...bal, ...rest]; ssA = fitTime(A, n);
+      const core = cores.filter(id => !A.includes(id));
+      B = p.twice === "core" ? [...core.slice(0, 2), "bal_una"] : core.slice(0, 1);
+      if (p.twice === "hiit") B.push(okEx(EXI.hiit, p) ? "hiit" : "cardio"); else if (p.twice === "cardio") B.push("cardio");
     }
     if (sp.mode) B.push("co_suelo");
-    if (p.twice === "cardio" || withCardio(p)) B.push("cardio");
-    B = B.filter(id => okEx(EXI[id], p));
+    B = [...new Set(B)].filter(id => EXI[id] && okEx(EXI[id], p));
     const l1 = partLabel(p.time, 1), l2 = partLabel(p.time2, 2), same = l1 === l2;
     return [
       {name: `${name} · ${same ? "1ª sesión" : l1}`, base: name, part: 1, items: A, ss: ssA},
@@ -805,7 +832,8 @@ function lastEntries(exId, n = 2){
 function stepFor(ex){ return (S.stepSz || {})[ex.id] || ex.inc || 2.5; }
 function readiness(){ return draft && draft.key === String(S.done || 0) && draft.checkin ? draft.checkin.level : null; }
 function rxFor(ex, p, week, live){
-  const goal = p.goal, beg = p.level === "principiante", sp = special(p), senior = isSenior(p), deload = isDeload(week, p), ready = live ? readiness() : null;
+  const goal = p.twice === "strhyp" ? (ex.comp ? "fuerza" : "masa") : p.goal, beg = p.level === "principiante", sp = special(p), senior = isSenior(p), deload = isDeload(week, p), ready = live ? readiness() : null;
+  if (ex.pat === "hiit") return {sets:1, lo: p.level === "principiante" ? 10 : 12, hi: p.level === "avanzado" ? 20 : 16, rir:null, rest:0, unit:"min", deload:false, note:"Calienta 3 min. Luego rondas de 30 s fuerte (que no puedas hablar) y 60–90 s suave. Termina con 2 min suaves.", ready: live ? readiness() : null};
   if (ex.pat === "cardio") {
     let lo = 20, hi = 30, note = "Ritmo de conversación: puedes hablar en frases cortas.";
     if (goal === "tonificar") { lo = 10; hi = 15; }
@@ -2153,8 +2181,12 @@ function renderOb(){
     <div><div class="small muted" style="font-weight:600;margin-bottom:6px">¿Qué días entrenas? Elige de 2 a 6</div><div class="opts">${WD.map((d, k) => `<label class="opt"><input type="checkbox" name="wd" value="${k + 1}" ${ob.wdays.includes(k + 1) ? "checked" : ""}><span>${d}</span></label>`).join("")}</div></div>
 <div class="opts"><label class="opt bigopt"><input type="checkbox" id="ob-twice" ${ob.twice ? "checked" : ""}><span><b>Entrenar 2 veces al día</b><small>Divide el entrenamiento del día en dos sesiones cortas, sin cargar el mismo músculo en las dos</small></span></label></div>
     <div class="grid2"><label class="field">${ob.twice ? "Hora de la 1ª sesión" : "Hora habitual"}<input type="time" id="ob-time" value="${esc(ob.time)}"></label>${ob.twice ? `<label class="field">Hora de la 2ª sesión<input type="time" id="ob-time2" value="${esc(ob.time2)}"></label>` : ""}<label class="field">${ob.twice ? "Minutos de cada sesión" : "Minutos por sesión"}<select id="ob-min">${[30,40,45,60,75,90].map(m => `<option value="${m}" ${ob.minutes == m ? "selected" : ""}>${m} min</option>`).join("")}</select></label></div>
-    ${ob.twice ? `<div><div class="small muted" style="font-weight:600;margin-bottom:6px">¿Cómo repartimos el día?</div><div class="opts">${Object.entries(TWICE_MODES).map(([k, l]) => `<label class="opt bigopt"><input type="radio" name="twm" value="${k}" ${ob.twice === k ? "checked" : ""}><span><b>${l}</b><small>${k === "split" ? "Ejemplo: pierna en la 1ª y torso en la 2ª. El volumen del día es el mismo, solo se divide." : "La 1ª es tu rutina de fuerza; la 2ª, cardio suave y core. Útil para perder grasa o mejorar la salud."}</small></span></label>`).join("")}</div></div>
-    ${twiceGap(ob.time, ob.time2)}` : ""}
+    ${ob.twice ? (() => { const opts = twiceOptions({goal: ob.goal, age: +ob.age, level: ob.level, sex: ob.sex, special: ob.sex === "f" ? ob.special : "", parqFlag: ob.parq && ob.parq.some(Boolean)}), combo = ob.twice !== "split", sub = opts.includes(ob.twice) ? ob.twice : opts[0], GN = {perder:"perder grasa", masa:"ganar masa", fuerza:"ganar fuerza", tonificar:"tonificar", salud:"salud y bienestar"}[ob.goal] || "tu objetivo";
+      return `<div><div class="small muted" style="font-weight:600;margin-bottom:6px">¿Cómo repartimos el día?</div><div class="opts">
+        <label class="opt bigopt"><input type="radio" name="twm" value="split" ${!combo ? "checked" : ""}><span><b>${TWICE_MODES.split}</b><small>Ejemplo: pierna en la 1ª y torso en la 2ª. El volumen del día es el mismo, solo se divide.</small></span></label>
+        <label class="opt bigopt"><input type="radio" name="twm" value="combo" ${combo ? "checked" : ""}><span><b>Sesión principal + una complementaria</b><small>La 1ª es tu rutina; en la 2ª eliges qué tipo de entrenamiento hacer según tu objetivo.</small></span></label></div></div>
+      ${combo ? `<div><div class="small muted" style="font-weight:600;margin-bottom:6px">¿Qué haces en la 2ª sesión? <span style="font-weight:400">· tu objetivo: ${GN}</span></div><div class="stack" style="gap:8px">${opts.map((k, i) => `<label class="opt bigopt" style="flex:1 1 100%"><input type="radio" name="tw2" value="${k}" ${sub === k ? "checked" : ""}><span><b>${TWICE_MODES[k]}${i === 0 ? `<i class="rec">Recomendado</i>` : ""}</b><small>${TWICE_DESC[k]}</small></span></label>`).join("")}</div></div>` : ""}`; })() : ""}
+    ${ob.twice ? twiceGap(ob.time, ob.time2) : ""}
     <p class="small muted">Con estos días y ${ob.twice ? "estas horas" : "esta hora"} puedes crear recordatorios en tu calendario desde la pestaña Plan.</p></div>`;
   if (st === 4) {
     const groups = EQUIP[ob.place];
@@ -2185,7 +2217,7 @@ function renderOb(){
     <div class="row between" style="margin-top:8px">${st > 0 ? `<button class="btn" id="obBack">Atrás</button>` : (ob.edit ? `<button class="btn" id="obCancel">Cancelar</button>` : "<span></span>")}<button class="btn primary" id="obNext">${st === 5 ? (ob.edit ? "Guardar cambios" : "Crear mi plan") : "Continuar"}</button></div></div>`;
   const rerender = () => { collectOb(); renderOb(); };
   v.querySelectorAll("input[name=place]").forEach(r => r.addEventListener("change", () => { collectOb(); ob.place = r.value; ob.equip = r.value === "gym" ? [...ALL_GYM] : []; renderOb(); }));
-  v.querySelectorAll("input[name^=pq],input[name=sp],#ob-twice,#ob-time,#ob-time2").forEach(r => r.addEventListener("change", rerender));
+  v.querySelectorAll("input[name^=pq],input[name=sp],input[name=twm],input[name=tw2],#ob-twice,#ob-time,#ob-time2").forEach(r => r.addEventListener("change", rerender));
   $("#eqAll") && $("#eqAll").addEventListener("click", () => v.querySelectorAll("input[name=eq]").forEach(c => c.checked = true));
   $("#eqNone") && $("#eqNone").addEventListener("click", () => v.querySelectorAll("input[name=eq]").forEach(c => c.checked = false));
   $("#obBack") && $("#obBack").addEventListener("click", () => { collectOb(); ob.step--; renderOb(); scrollTo(0, 0); });
@@ -2197,7 +2229,7 @@ function collectOb(){
   if (ob.step === 0) { ob.parq = PARQ.map((_, i) => val("pq" + i) === "1"); const m = ck("ob-med"); if (m != null) ob.medOk = m; }
   if (ob.step === 1) { ob.name = ($("#ob-name").value || "").trim(); ob.sex = val("sex") || ob.sex; ob.age = $("#ob-age").value; ob.height = $("#ob-h").value; ob.weight = $("#ob-w").value; ob.activity = $("#ob-act").value; }
   if (ob.step === 2) ob.goal = val("goal") || ob.goal;
-  if (ob.step === 3) { ob.level = val("lvl") || ob.level; ob.wdays = [...v.querySelectorAll("input[name=wd]:checked")].map(c => +c.value); ob.time = $("#ob-time").value || "18:00"; ob.minutes = +$("#ob-min").value; const tw = ck("ob-twice"); ob.twice = tw ? (val("twm") || ob.twice || "split") : ""; if ($("#ob-time2")) ob.time2 = $("#ob-time2").value || "13:00"; }
+  if (ob.step === 3) { ob.level = val("lvl") || ob.level; ob.wdays = [...v.querySelectorAll("input[name=wd]:checked")].map(c => +c.value); ob.time = $("#ob-time").value || "18:00"; ob.minutes = +$("#ob-min").value; const tw = ck("ob-twice"), m = val("twm"); ob.twice = !tw ? "" : m === "combo" ? (val("tw2") || (ob.twice && ob.twice !== "split" ? ob.twice : twiceOptions({goal: ob.goal, age: ob.age})[0])) : m === "split" ? "split" : (ob.twice || "split"); if ($("#ob-time2")) ob.time2 = $("#ob-time2").value || "13:00"; }
   if (ob.step === 4) ob.equip = [...v.querySelectorAll("input[name=eq]:checked")].map(c => c.value);
   if (ob.step === 5) {
     ob.limits = [...v.querySelectorAll("input[name=lim]:checked")].map(c => c.value);
@@ -2466,12 +2498,12 @@ function renderPlan(){
   const p = S.profile, ps = planState(), g = GOALS[p.goal], sp = special(p), wds = p.wdays || defaultWdays(p.days);
   const vol = weeklyVolume(ps.plan, p, Math.min(ps.week, 4)), maxV = 24;
   const tw = isTwice(p), evTrain = gcalLink(tw ? "Entreno 1 · Gymnós" : "Entreno · Gymnós", `Sesión de ${p.minutes} min. Abre Gymnós y toca "Iniciar rutina guiada".`, wds, p.time || "18:00", p.minutes);
-  const evTrain2 = tw ? gcalLink("Entreno 2 · Gymnós", `2ª sesión del día, ${p.minutes} min. ${p.twice === "cardio" ? "Cardio y core." : "Trabaja otros músculos que la 1ª."} Abre Gymnós y toca "Iniciar rutina guiada".`, wds, p.time2 || "13:00", p.minutes) : "";
+  const evTrain2 = tw ? gcalLink("Entreno 2 · Gymnós", `2ª sesión del día, ${p.minutes} min. ${p.twice === "split" ? "Trabaja otros músculos que la 1ª." : TWICE_MODES[p.twice] + "."} Abre Gymnós y toca "Iniciar rutina guiada".`, wds, p.time2 || "13:00", p.minutes) : "";
   const evWeigh = gcalLink("Pesaje y pasos · Gymnós", "Pésate en ayunas y registra peso, cintura y pasos en la pestaña Progreso.", [wds[0]], "07:00", 10);
   const evShop = gcalLink("Compras y preparación de comidas", "Abre Gymnós > Comida > Lista de compras.", [7], "10:00", 60);
   $("#view").innerHTML = `<div class="section"><div class="eyebrow">Plan actual</div><h1>${esc(g.l)} · ${p.days} días${tw ? " · 2 sesiones al día" : ""}</h1>
     <p class="muted">${esc({gym:"Gimnasio", home:"Casa", outdoor:"Al aire libre"}[p.place])} · ${tw ? `2 × ${p.minutes}` : p.minutes} min · nivel ${esc(p.level)} · ${wds.map(w => WD[w - 1]).join(", ")} a las ${esc(p.time || "18:00")}${tw ? ` y ${esc(p.time2 || "13:00")}` : ""}</p>
-    ${tw ? `<p class="small muted">${p.twice === "cardio" ? "La 1ª sesión es tu rutina de fuerza y la 2ª, cardio suave y core." : "Cada día se reparte en dos sesiones que no cargan el mismo músculo. El volumen semanal es el mismo que en una sola sesión."} Calienta 5 minutos antes de cada una y come algo con proteína entre las dos. La semana cuenta como cumplida al terminar la 2ª sesión de cada día.</p>` : ""}
+    ${tw ? `<p class="small muted">${p.twice !== "split" ? TWICE_DESC[p.twice] || "" : "Cada día se reparte en dos sesiones que no cargan el mismo músculo. El volumen semanal es el mismo que en una sola sesión."} Calienta 5 minutos antes de cada una y come algo con proteína entre las dos. La semana cuenta como cumplida al terminar la 2ª sesión de cada día.</p>` : ""}
     ${sp.mode === "embarazo" && p.goalOrig && p.goalOrig !== "salud" ? `<p class="small muted">Tu objetivo "${esc(GOALS[p.goalOrig].l)}" queda en pausa durante el embarazo.</p>` : ""}
     <div class="row">${Array.from({length: ps.cl}, (_, k) => k + 1).map(w => `<span class="chip ${w === ps.week ? "acc" : ""}">S${w}${w === 5 ? " descarga" : ""}</span>`).join("")}</div>
     <p class="small muted">${ps.cl === 5 ? "Bloques de 4 semanas de carga y 1 de descarga." : "Bloques de 4 semanas sin descarga fija: la activamos solo si detectamos fatiga."} ${p.goal === "fuerza" ? "En fuerza, los ejercicios principales bajan de 6–8 a 3–4 repeticiones a lo largo del bloque, con más peso." : (p.goal === "masa" || p.goal === "tonificar") && !sp.mode ? "En las semanas 3 y 4 los ejercicios principales suman una serie." : ""}</p></div>
