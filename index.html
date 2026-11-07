@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.3";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.4";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -1572,6 +1572,82 @@ async function doLabel(file){
     fail(e && e.code === "not_granted" ? "No se dio permiso para usar la IA. Escribe los valores de la etiqueta aquí." : e && e.code === "rate_limited" ? "Demasiadas solicitudes seguidas. Espera un minuto o escribe los valores aquí." : "No pude leer la foto. Escribe los valores de la etiqueta aquí.");
   }
 }
+/* ---- Báscula inteligente: leer la captura de pantalla de su app (Kalley, Xiaomi, Renpho, etc.) ---- */
+const SCALE_F = [["w","Peso","kg",30,300,1],["bf","Grasa corporal","%",3,60,1],["muscle","Masa muscular","kg",15,120,1],["visc","Grasa visceral","",1,30,0],["water","Agua corporal","%",30,80,1],["bone","Masa ósea","kg",.5,8,1],["prot","Proteína","%",5,30,1],["bmr","Metabolismo basal","kcal",700,4500,0]];
+const SCALE_KW = [["visc",/visceral|indice de grasa|grasa visc/],["bone",/peso oseo|masa osea|\boseo\b|\bosea\b|hueso|bone/],["muscle",/masa muscular|\bmusculo|muscle/],["bf",/grasa corporal|% ?de ?grasa|body ?fat|\bgrasa\b/],["water",/humedad|\bagua\b|water/],["prot",/proteina|protein/],["bmr",/metabolismo basal|tasa metabolica|metabolismo|\bbasal\b|\btmb\b|\bbmr\b/],["bmi",/\bimc\b|\bbmi\b/],["w",/\bpeso\b|weight/]];
+function parseScale(txt){
+  const norm = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const lines = norm(txt).split(/\n+/).map(l => l.replace(/(\d)\s*,\s*(\d)/g, "$1.$2").replace(/\s+/g, " ").trim()).filter(Boolean);
+  const labelsIn = l => { let t = l; const out = []; SCALE_KW.forEach(([k, re]) => { const g = new RegExp(re.source, "g"); let m; while ((m = g.exec(t))) { out.push([m.index, k]); t = t.slice(0, m.index) + " ".repeat(m[0].length) + t.slice(m.index + m[0].length); g.lastIndex = m.index + m[0].length; } }); return out.sort((a, b) => a[0] - b[0]).map(x => x[1]).filter((k, i, arr) => k !== arr[i - 1]); };
+  const numsIn = l => [...l.replace(/\b\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2}\b/g, " ").replace(/\b\d{1,2}:\d{2}\b/g, " ").matchAll(/(\d+(?:\.\d+)?)\s*(kg|%|kcal)?/g)].map(m => ({v: +m[1], u: m[2] || ""}));
+  const got = {}; let pend = null;
+  const put = (k, n) => { if (k === "bmi" || got[k] != null) return; const f = SCALE_F.find(x => x[0] === k); if (f && n.v >= f[3] && n.v <= f[4]) got[k] = n.v; };
+  lines.forEach(l => {
+    const labs = labelsIn(l), nums = numsIn(l);
+    if (labs.length && nums.length) { if (labs.length === nums.length) labs.forEach((k, i) => put(k, nums[i])); else if (labs.length === 1) put(labs[0], nums[0]); pend = null; return; }
+    if (labs.length) { if (!(pend && labs.every(k => pend.includes(k)))) pend = labs; return; }
+    if (nums.length && pend) { if (nums.length >= pend.length) pend.forEach((k, i) => put(k, nums[i])); pend = null; }
+  });
+  if (got.bmr == null) { const kc = lines.flatMap(numsIn).find(n => n.u === "kcal" && n.v >= 700 && n.v <= 4500); if (kc) got.bmr = kc.v; }
+  const dm = txt.match(/(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})/) || txt.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/);
+  let date = null; if (dm) { const [y, mo, d] = dm[1].length === 4 ? [dm[1], dm[2], dm[3]] : [dm[3], dm[2], dm[1]]; const iso = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`; if (!isNaN(Date.parse(iso)) && iso <= todayISO()) date = iso; }
+  return {vals: got, date};
+}
+let SC = null;
+async function openScale(file){
+  SC = {photo: URL.createObjectURL(file), busy: true, vals: {}, date: todayISO(), note: "", warn: false}; scaleSheet();
+  const setBusy = t => { const el = $("#scBusy"); if (el) el.textContent = t; };
+  try {
+    const ai = await aiVision();
+    if (ai) {
+      const img = await prepImage(file, 1600);
+      const r = await ai.json(`La imagen es una captura de pantalla de la app de una báscula inteligente (bioimpedancia) o una foto de su pantalla. Lee los valores de la medición. Responde SOLO con JSON: {"fecha":"AAAA-MM-DD" o null,"peso_kg":número o null,"grasa_pct":número o null,"masa_muscular_kg":número o null,"grasa_visceral":número o null,"agua_pct":número o null,"masa_osea_kg":número o null,"proteina_pct":número o null,"metabolismo_basal_kcal":número o null,"legible":true o false}. "Humedad" es agua corporal. No inventes valores que no aparezcan.`, {images: [img], modelTier: "quick"});
+      if (!r || r.legible === false) throw {code: "illegible"};
+      const map = {w: r.peso_kg, bf: r.grasa_pct, muscle: r.masa_muscular_kg, visc: r.grasa_visceral, water: r.agua_pct, bone: r.masa_osea_kg, prot: r.proteina_pct, bmr: r.metabolismo_basal_kcal};
+      SCALE_F.forEach(([k, , , lo, hi]) => { const v = +map[k]; if (map[k] != null && v >= lo && v <= hi) SC.vals[k] = v; });
+      if (r.fecha && /^\d{4}-\d{2}-\d{2}$/.test(r.fecha) && r.fecha <= todayISO()) SC.date = r.fecha;
+    } else if (ocrOK()) {
+      const img = await prepImage(file, 2000, true), first = !OCRW;
+      const txt = await ocrText(img, m => setBusy(m && /recognizing/.test(m.status) ? `Leyendo la captura… ${Math.round((m.progress || 0) * 100)} %` : first ? "Preparando el lector (solo la primera vez, necesita internet)…" : "Preparando…"));
+      const r = parseScale(txt); SC.vals = r.vals; if (r.date) SC.date = r.date;
+    } else { SC.busy = false; SC.note = "Leer la captura necesita la app instalada o la IA de Claude. Escribe los valores mirando la imagen."; SC.warn = true; scaleSheet(); return; }
+    const n = Object.keys(SC.vals).length;
+    SC.busy = false; SC.warn = n < 3;
+    SC.note = n ? (n < 3 ? "Leí solo una parte. Completa lo que falte mirando la imagen." : "Revisa que los números coincidan con la captura antes de guardar.") : "No pude leer los valores. Escríbelos mirando la imagen.";
+    scaleSheet();
+  } catch(e) {
+    SC.busy = false; SC.warn = true; SC.note = e && e.code === "not_granted" ? "No se dio permiso para usar la IA. Escribe los valores mirando la imagen." : e && e.code === "rate_limited" ? "Demasiadas solicitudes seguidas. Espera un minuto o escribe los valores." : "No pude leer la captura. Escribe los valores mirando la imagen."; scaleSheet();
+  }
+}
+function scaleSheet(){
+  const head = `<div class="grab"><div><div class="eyebrow">Progreso</div><h2>Medición de la báscula</h2></div><button class="btn small" data-close>Cerrar</button></div>`;
+  const img = `<img src="${SC.photo}" alt="Captura de la báscula" style="width:100%;max-height:${SC.busy ? 260 : 200}px;object-fit:contain;border-radius:10px;background:var(--sunk);margin-bottom:12px">`;
+  if (SC.busy) { openSheet(head + img + `<div class="note" aria-live="polite" id="scBusy">Leyendo la captura…</div>`); return; }
+  openSheet(head + img + `<div class="stack"><div class="note ${SC.warn ? "warn" : ""}">${esc(SC.note)}</div>
+    <label class="field">Fecha de la medición<input type="date" id="scDate" value="${SC.date}" max="${todayISO()}"></label>
+    <div class="grid2">${SCALE_F.map(([k, l, u, lo, hi, dec]) => `<label class="field">${l}${u ? ` (${u})` : ""}<input type="number" inputmode="decimal" step="${dec ? "0.1" : "1"}" min="${lo}" max="${hi}" data-sc="${k}" value="${SC.vals[k] != null ? SC.vals[k] : ""}"></label>`).join("")}</div>
+    <button class="btn primary big block" id="scSave">Guardar medición</button><div id="scMsg" class="small" aria-live="polite"></div></div>`, sh => {
+    sh.querySelector("#scSave").onclick = () => {
+      const vals = {}; let bad = null;
+      sh.querySelectorAll("[data-sc]").forEach(i => { const v = parseFloat(i.value), f = SCALE_F.find(x => x[0] === i.dataset.sc); if (i.value === "" || isNaN(v)) return; if (v < f[3] || v > f[4]) bad = f[1]; else vals[f[0]] = v; });
+      if (bad) { sh.querySelector("#scMsg").textContent = `Revisa ${bad.toLowerCase()}: el valor parece fuera de rango.`; return; }
+      if (!Object.keys(vals).length) { sh.querySelector("#scMsg").textContent = "Escribe al menos un valor."; return; }
+      const date = sh.querySelector("#scDate").value || todayISO();
+      let m = S.measures.find(x => x.date === date); if (!m) { m = {date}; S.measures.push(m); }
+      Object.assign(m, vals, {scale: true}); S.measures.sort((a, b) => a.date < b.date ? -1 : 1); save("measures");
+      closeSheet(); toast("Medición de la báscula guardada"); if (tab === "progreso") renderProg();
+    };
+  });
+}
+function compHTML(){
+  const ks = SCALE_F.filter(([k]) => k !== "w");
+  const rows = ks.map(([k, l, u, , , dec]) => { const xs = S.measures.filter(m => m[k] != null); if (!xs.length) return null; const a = xs[0][k], b = xs.at(-1)[k], d = b - a; return [l, u, dec, a, b, d, xs.length, k]; }).filter(Boolean);
+  if (!rows.length) return "";
+  const good = {bf:-1, visc:-1, muscle:1, bone:0, water:0, prot:0, bmr:0};
+  const last = S.measures.filter(m => m.scale).at(-1);
+  return `<div class="section"><h2>Composición corporal</h2>${last ? `<p class="small muted" style="margin-top:-4px">Última medición de báscula: ${esc(last.date)}</p>` : ""}<div class="tbl"><table><thead><tr><th>Medida</th><th>Ahora</th><th>Cambio</th></tr></thead><tbody>${rows.map(([l, u, dec, a, b, d, n, k]) => { const dir = good[k] || 0, col = n > 1 && dir && Math.abs(d) > 0 ? (d * dir > 0 ? "var(--good)" : "var(--bad)") : "inherit"; return `<tr><td>${l}</td><td class="num">${fmt(b, dec)}${u ? ` ${u}` : ""}</td><td class="num" style="color:${col}">${n > 1 ? `${d > 0 ? "+" : ""}${fmt(d, dec)}${u === "%" ? " pts" : u ? ` ${u}` : ""}` : "–"}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="small muted">La báscula estima estos datos con una corriente eléctrica leve, y cambian con el agua del cuerpo. Pésate en ayunas, a la misma hora y después de ir al baño, y fíjate en la tendencia de varias semanas, no en un día. Si la masa muscular sube y la grasa baja, vas bien.</p></div>`;
+}
 async function doPlate(file){
   FD.photo = URL.createObjectURL(file); FD.plateMode = true;
   const ai = await aiVision();
@@ -2648,7 +2724,7 @@ function renderProg(){
   const p = S.profile, series = movingAvg(S.measures), rate = weeklyRate(series), sp = special(p);
   const vd = sp.mode === "embarazo" ? {t:"Durante el embarazo tu médico define la ganancia de peso adecuada; aquí solo llevamos el registro.", tone:"", adj:0} : rateVerdict(rate, p.goal);
   const lastW = series.at(-1), first = series[0], ws = weekStats(), sum = weeklySummary();
-  const MS = [["waist","Cintura"],["hip","Cadera"],["arm","Brazo"],["thigh","Muslo"],["bf","% grasa"]];
+  const MS = [["waist","Cintura"],["hip","Cadera"],["arm","Brazo"],["thigh","Muslo"]];
   const mrows = MS.map(([k, l]) => { const xs = S.measures.filter(m => m[k] != null); return xs.length ? [l, xs[0][k], xs.at(-1)[k], xs.length, k] : null; }).filter(Boolean);
   const lifts = {};
   S.logs.forEach(s => s.entries.forEach(e => { if (EXI[e.id]?.assist) return; const best = Math.max(0, ...e.sets.filter(x => x.kg && x.reps && x.reps <= 10).map(x => e1rm(x.kg, x.reps))); if (best > 0) (lifts[e.id] = lifts[e.id] || []).push(best); }));
@@ -2666,7 +2742,9 @@ function renderProg(){
       <div class="stepbars l small muted">${days7.map(([d]) => `<span style="text-align:center">${WD[(new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7]}</span>`).join("")}</div>
       <p class="small muted">Meta diaria: ${fmt(tgt, 0)} pasos. En verde, los días que la cumpliste.</p></div></div>
     ${mrows.length ? `<div class="section"><h2>Medidas</h2><div class="tbl"><table><thead><tr><th>Medida</th><th>Inicio</th><th>Ahora</th><th>Cambio</th></tr></thead><tbody>${mrows.map(([l, a, b, n, k]) => `<tr><td>${l}</td><td class="num">${fmt(a)}</td><td class="num">${fmt(b)}</td><td class="num">${b - a > 0 ? "+" : ""}${fmt(b - a)}${k === "bf" ? " pts" : " cm"}</td></tr>`).join("")}</tbody></table></div><p class="small muted">Si el peso no cambia pero la cintura baja, estás ganando músculo y perdiendo grasa.</p></div>` : ""}
+    ${compHTML()}
     <div class="section"><h2>Registrar</h2><div class="card stack">
+      <label class="btn big block" style="justify-content:flex-start;gap:12px"><input type="file" id="scaleIn" accept="image/*" hidden><span><b>Subir captura de la báscula</b><br><span class="small muted" style="font-weight:400">Peso, grasa, músculo, agua y más desde la app de tu báscula</span></span></label>
       <div class="grid3"><label class="field">Fecha<input type="date" id="mDate" value="${todayISO()}"></label><label class="field">Peso (kg)<input type="number" inputmode="decimal" step="0.1" id="mW" placeholder="${lastW ? fmt(lastW.w) : "kg"}"></label><label class="field">Pasos<input type="number" inputmode="numeric" id="mSteps" placeholder="pasos"></label></div>
       <div class="grid2"><label class="field">Cintura (cm)<input type="number" inputmode="decimal" step="0.5" id="mWaist"></label><label class="field">Cadera (cm)<input type="number" inputmode="decimal" step="0.5" id="mHip"></label><label class="field">Brazo (cm)<input type="number" inputmode="decimal" step="0.5" id="mArm"></label><label class="field">Muslo (cm)<input type="number" inputmode="decimal" step="0.5" id="mThigh"></label></div>
       <label class="field">% de grasa (báscula de bioimpedancia, opcional)<input type="number" inputmode="decimal" step="0.1" id="mBf" placeholder="%"></label>
@@ -2701,6 +2779,7 @@ function renderProg(){
     $("#csvMsg").textContent = n ? `Importamos ${n} pesajes.` : "No encontramos filas con fecha y peso en kg. Revisa que el archivo tenga columnas de fecha y peso.";
     if (n) setTimeout(renderProg, 900);
   });
+  $("#scaleIn").addEventListener("change", e => { const fl = e.target.files[0]; e.target.value = ""; if (fl) openScale(fl); });
   bindPhotos();
 }
 let aiRecipes = null, aiState = "";
