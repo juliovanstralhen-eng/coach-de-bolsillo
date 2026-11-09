@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.8";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.9";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -3477,7 +3477,7 @@ function wpAfterSet(c){
   const prevI = WP.i, partner = partnerOf(WP.day, prevI);
   if (!wpFindNext()) { WP.phase = "done"; beep(988, .2); buzz([100, 60, 100]); renderWP(); return; }
   const toPartner = partner > prevI && WP.i === partner;
-  WP.transition = toPartner; WP.restTotal = toPartner ? 10 : (c.rx.rest || 30); WP.restEnd = Date.now() + WP.restTotal * 1000; WP.phase = "rest";
+  WP.transition = toPartner; WP.restTotal = toPartner ? 10 : (c.rx.rest || 30); WP.restEnd = Date.now() + WP.restTotal * 1000; WP.phase = "rest"; WP.soon = false;
   renderWP();
 }
 function ringSVG(){ const left = Math.max(0, (WP.restEnd - Date.now()) / 1000), R = 88, C = 2 * Math.PI * R; return `<svg class="ring" width="220" height="220" viewBox="0 0 220 220" aria-hidden="true"><circle cx="110" cy="110" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="14"/><circle id="ringArc" cx="110" cy="110" r="${R}" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.restTotal)}" transform="rotate(-90 110 110)"/><text id="ringT" x="110" y="128" text-anchor="middle" font-size="54" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${mmss(Math.ceil(left))}</text></svg>`; }
@@ -3510,11 +3510,13 @@ function renderWP(){
   } else {
     const c = wpCur(), rxTxt = `${c.rx.lo}–${c.rx.hi} ${UNIT_L[c.rx.unit]}`;
     if (WP.phase === "rest") {
-      const g = GUIDES[c.ex.gd];
+      const g = GUIDES[c.ex.gd], newEx = WP.lastEx !== c.ex.id;
       body = `<div class="stack" style="align-items:center;text-align:center"><div class="eyebrow">${WP.transition ? "Superserie: pasa directo al siguiente" : "Descansa y respira"}</div>${ringSVG()}<div class="row" style="justify-content:center"><button class="btn" id="rAdd">+30 s</button><button class="btn" id="rSkip">${WP.transition ? "Ir ya" : "Saltar descanso"}</button></div>
         ${WP.flash ? `<div class="note" style="width:100%;text-align:left">${esc(WP.flash)}</div>` : ""}
         ${NOTIF.can() && NOTIF.perm() === "default" && !S.notifAsked ? `<div class="card stack" style="width:100%;text-align:left;gap:8px" id="nPrime"><b>¿Te avisamos cuando termine el descanso?</b><span class="small muted">Así puedes mirar el chat o la música sin perder la cuenta.</span><div class="row"><button class="btn small primary" id="nYes">Sí, avisarme</button><button class="btn small ghost" id="nNo">Ahora no</button></div></div>` : ""}
-        <div class="card" style="width:100%;text-align:left"><div class="eyebrow">Sigue</div><h3>${esc(c.ex.n)} · ${c.rx.unit === "min" ? "cardio" : `serie ${WP.j + 1} de ${c.rx.sets}`}</h3><p class="small muted">${c.kg && c.st.kg !== "" ? fmt(+c.st.kg) + " kg × " : ""}${rxTxt}${c.rx.rir != null ? ` · RIR ${c.rx.rir}` : ""}</p><p class="small" style="margin-top:8px"><b>Clave técnica:</b> ${esc(g.steps[WP.j % g.steps.length])}</p></div></div>`;
+        ${WP.soon ? `<div class="note warn" style="width:100%;text-align:left" aria-live="polite"><b>Prepárate.</b> ${newEx ? `Ve ${isMachine(c.ex) ? "a la máquina, ajústala" : "a tu lugar, toma el peso"} y colócate.` : "Toma el peso y colócate para la siguiente serie."}</div>` : ""}
+        <div class="card" style="width:100%;text-align:left"><div class="eyebrow">${newEx ? "Siguiente ejercicio" : "Sigue"}</div><h3>${esc(c.ex.n)} · ${c.rx.unit === "min" ? "cardio" : `serie ${WP.j + 1} de ${c.rx.sets}`}</h3><p class="small muted">${c.kg && c.st.kg !== "" ? fmt(+c.st.kg) + " kg × " : ""}${rxTxt}${c.rx.rir != null ? ` · RIR ${c.rx.rir}` : ""}</p>
+          ${newEx ? `<canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}" style="margin-top:8px"></canvas>${gripHTML(c.ex, true)}<p class="small" style="margin-top:8px"><b>Mientras descansas:</b> ${isMachine(c.ex) ? "ve a la máquina, ajusta el asiento y los apoyos y pon el peso." : "alista el equipo y el peso."}</p>` : `<p class="small" style="margin-top:8px"><b>Clave técnica:</b> ${esc(g.steps[WP.j % g.steps.length])}</p>`}</div></div>`;
     } else if (WP.phase === "gen") {
       const g = WP.gen, tot = g.mins * 60, left = WP.genEnd ? Math.max(0, (WP.genEnd - Date.now()) / 1000) : tot, R = 62, C = 2 * Math.PI * R;
       body = `<div class="stack" style="gap:12px"><div class="eyebrow">Antes de empezar</div><h2>Calentamiento general</h2>
@@ -3572,7 +3574,8 @@ function bindWP(){
   if (WP.phase === "done") { q("#wpSave").onclick = () => exitWorkout(true); return; }
   const c = wpCur();
   if (WP.phase === "rest") { const ny = q("#nYes"); if (ny) { ny.onclick = async () => { const r = await NOTIF.ask(); toast(r === "granted" ? "Listo: te avisaremos al terminar cada descanso" : "Sin avisos: igual suena y vibra con la app abierta"); renderWP(); }; q("#nNo").onclick = () => { S.notifAsked = true; save(); renderWP(); }; }
-    q("#rAdd").onclick = () => { WP.restEnd += 30000; WP.restTotal += 30; }; q("#rSkip").onclick = () => { WP.flash = ""; wpPrepSet(); renderWP(); }; return; }
+    if (q("#wpAnim")) startAnim(q("#wpAnim"), c.ex, null);
+    q("#rAdd").onclick = () => { WP.restEnd += 30000; WP.restTotal += 30; if (WP.soon && WP.restEnd - Date.now() > 16000) { WP.soon = false; renderWP(); } }; q("#rSkip").onclick = () => { WP.flash = ""; wpPrepSet(); renderWP(); }; return; }
   if (WP.phase === "gen") {
     if (q("#genGo")) q("#genGo").onclick = () => { WP.genEnd = Date.now() + WP.gen.mins * 60000; speak("Calentamiento en marcha"); renderWP(); };
     el.querySelectorAll("[data-mob]").forEach(b => b.onchange = () => { WP.genDone[b.dataset.mob] = b.checked; });
@@ -3594,7 +3597,7 @@ function bindWP(){
     return;
   }
   if (WP.phase === "switch") { q("#swGo").onclick = () => { beep(988, .2); wpBeginSet(false, true); }; return; }
-  if (WP.phase === "calibres") { q("#calGo").onclick = () => { WP.phase = "rest"; WP.transition = false; WP.restTotal = 60; WP.restEnd = Date.now() + 60000; WP.flash = "Descansa un minuto antes de tu primera serie."; renderWP(); }; return; }
+  if (WP.phase === "calibres") { q("#calGo").onclick = () => { WP.phase = "rest"; WP.soon = false; WP.transition = false; WP.restTotal = 60; WP.restEnd = Date.now() + 60000; WP.flash = "Descansa un minuto antes de tu primera serie."; renderWP(); }; return; }
   if (WP.phase === "rircheck") {
     q("#rcCount").onclick = () => { WP.extra++; q("#rcN").textContent = WP.extra; beep(660, .05); buzz(15); };
     q("#rcEnd").onclick = () => {
@@ -3681,7 +3684,14 @@ function tickWP(){
   if (WP.phase === "rest") {
     const left = (WP.restEnd - Date.now()) / 1000, t = el.querySelector("#ringT"), a = el.querySelector("#ringArc");
     if (t) { t.textContent = mmss(Math.max(0, Math.ceil(left))); a.setAttribute("stroke-dashoffset", 2 * Math.PI * 88 * (1 - Math.max(0, left) / WP.restTotal)); }
-    const sx = Math.ceil(left); if (sx <= 3 && sx > 0 && WP.lastCount !== sx) { WP.lastCount = sx; beep(740, .08); }
+    const warnAt = WP.restTotal >= 45 ? 15 : WP.restTotal >= 20 ? 10 : 0;
+    if (warnAt && !WP.soon && left <= warnAt && left > 3) {
+      const c = wpCur(), newEx = WP.lastEx !== c.ex.id; WP.soon = true;
+      beep(880, .12); setTimeout(() => beep(880, .12), 220); buzz([80, 60, 80]);
+      speak(`Quedan ${warnAt} segundos. ${newEx ? `Siguiente ejercicio: ${c.ex.n}.` : `Prepárate para la serie ${WP.j + 1}.`}`);
+      renderWP(); return;
+    }
+    const sx = Math.ceil(left); if (sx <= 3 && sx > 0 && WP.lastCount !== sx) { WP.lastCount = sx; beep(740, .08); speak(ES_NUM[sx] === "una" ? "uno" : ES_NUM[sx]); }
     if (left <= 0) { const late = -left; restEndAlert(); WP.flash = late > 3 ? `Tu descanso terminó hace ${Math.round(late)} s. Sigue cuando estés listo.` : ""; wpPrepSet(); pwaNotify("Descanso terminado", `Sigue: ${wpCur().ex.n}`); renderWP(); }
   }
 }
