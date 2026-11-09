@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.7";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.8";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -2234,7 +2234,8 @@ function fitZoom(spec, o){
   return spec._z[key] = minY < 4 ? (FLOOR - 4) / (FLOOR - minY) : 1;
 }
 let animRaf = 0, currentGuideEx = null;
-function startAnim(canvas, ex, phaseEl){
+/* clock (opcional): devuelve el segundo del ciclo que debe mostrarse, para ir al ritmo del conteo de la serie */
+function startAnim(canvas, ex, phaseEl, clock){
   cancelAnimationFrame(animRaf); readColors(); currentGuideEx = ex;
   const spec = P[ex.an]; const ctx = canvas.getContext("2d");
   const dpr = Math.min(3, window.devicePixelRatio || 1); canvas.width = 320 * dpr; canvas.height = 230 * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2246,7 +2247,8 @@ function startAnim(canvas, ex, phaseEl){
   canvas.onclick = () => { paused = !paused; if (paused) pt = performance.now(); else t0 += performance.now() - pt; };
   const tick = now => {
     if (!canvas.isConnected) return;
-    const t = paused ? ((pt - t0) / 1000) % T : ((now - t0) / 1000) % T;
+    const ext = clock ? clock(T) : null;
+    const t = ext != null ? ext : paused ? ((pt - t0) / 1000) % T : ((now - t0) / 1000) % T;
     let k, lab, effort;
     if (t < d1) { k = ease(t / d1); lab = spec.lab[0]; effort = conFirst ? k : .25 + .2 * k; }
     else if (t < d1 + h1) { k = 1; lab = spec.lab[0]; effort = conFirst ? 1 : .45; }
@@ -2273,7 +2275,7 @@ function openSheet(html, onMount){
   const f = sh.querySelector("[data-close]"); f && f.focus();
 }
 function escClose(e){ if (e.key === "Escape") closeSheet(); }
-function closeSheet(){ cancelAnimationFrame(animRaf); $("#sheetRoot").innerHTML = ""; document.removeEventListener("keydown", escClose); lastFocus && lastFocus.focus && lastFocus.focus(); if (WP) { const c = $("#wpAnim"); if (c) startAnim(c, wpCur().ex, null); } }
+function closeSheet(){ cancelAnimationFrame(animRaf); $("#sheetRoot").innerHTML = ""; document.removeEventListener("keydown", escClose); lastFocus && lastFocus.focus && lastFocus.focus(); if (WP) { const c = $("#wpAnim"); if (c) startAnim(c, wpCur().ex, null, wpClock); } }
 /* Cómo agarrar: orientación de las palmas en cada ejercicio */
 const GRIP = {
   sq_barra:["prono", "Barra sobre la parte alta de la espalda (no en el cuello). Manos más anchas que los hombros, palmas hacia adelante y pulgar rodeando la barra. Muñecas rectas, codos apuntando al piso."],
@@ -3429,9 +3431,17 @@ function speak(t, force){
     u.lang = v ? v.lang : "es-ES"; if (v) u.voice = v; u.rate = 1.12; u.volume = 1; ss.speak(u);
   } catch(e){}
 }
+/* Ritmo de la animación durante la serie: con ritmo automático va con el conteo de voz;
+   contando a mano, cada toque reinicia el ciclo para seguir el ritmo de la persona */
+function wpClock(T){
+  if (!WP || WP.phase !== "set") return null;
+  const c = wpCur(); if (!c || c.rx.unit !== "reps") return null;
+  const ref = WP.metro ? WP.repStart : (WP.tapAt || WP.setStart), e = (Date.now() - ref) / 1000;
+  return e <= 0 ? 0 : e % T;
+}
 function wpPrepSetR(){ wpPrepSet(); renderWP(); }
 function wpPrepSet(){
-  const c = wpCur(); WP.side = 0; WP.sideReps = []; WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.metro = false; WP.calibNow = c.kg && !c.ex.assist && !lastEntries(c.ex.id, 1).length && !c.d.calibrated && !c.d.sets.some(x => x.ok);
+  const c = wpCur(); WP.side = 0; WP.sideReps = []; WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.tapAt = 0; WP.lastCount = null; WP.metro = false; WP.calibNow = c.kg && !c.ex.assist && !lastEntries(c.ex.id, 1).length && !c.d.calibrated && !c.d.sets.some(x => x.ok);
   const pr = wpSet().prep;
   const wu = WP.j === 0 && !WP.calibNow && !c.d.sets.some(x => x.ok) ? wuFor(WP.items, WP.i, +c.st.kg) : null;
   WP.warm = wu && wu.length ? wu : null;
@@ -3441,7 +3451,7 @@ function wpPrepSet(){
 }
 /* Arranca la serie: cronómetro en cero y, si está activo, el ritmo que cuenta solo */
 function wpBeginSet(silent, keepSide){
-  const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.lastCount = null; WP.lastEx = c.ex.id;
+  const c = wpCur(); WP.phase = "set"; WP.reps = 0; WP.setStart = Date.now(); WP.tapAt = 0; WP.lastCount = null; WP.lastEx = c.ex.id;
   if (!keepSide) { WP.side = 0; WP.sideReps = []; }
   if (c.rx.side && !silent) speak(SIDE_N[c.rx.side][WP.side || 0]);
   WP.metro = wpSet().auto && c.rx.unit === "reps"; WP.repStart = Date.now(); WP.cue = 0;
@@ -3596,13 +3606,13 @@ function bindWP(){
     };
     return;
   }
-  startAnim(q("#wpAnim"), c.ex, null);
+  startAnim(q("#wpAnim"), c.ex, null, wpClock);
   q("#wpGuide").onclick = () => openGuide(c.ex.id);
   const setKg = v => { const nv = Math.max(0, Math.round(v * 4) / 4); c.st.kg = nv; c.d.touched = true; for (let k = WP.j + 1; k < c.d.sets.length; k++) { const x = c.d.sets[k]; if (!x.ok) x.kg = nv; } saveDraft(); q("#wpKg").textContent = fmt(nv); };
   if (q("#kgm")) { q("#kgm").onclick = () => setKg((c.st.kg === "" ? 0 : +c.st.kg) - stepFor(c.ex)); q("#kgp").onclick = () => setKg((c.st.kg === "" ? 0 : +c.st.kg) + stepFor(c.ex)); }
   if (WP.phase === "set") {
     const timed = c.rx.unit === "s" || c.rx.unit === "min";
-    q("#wpCount").onclick = () => { if (timed) return; if (WP.metro) { WP.metro = false; renderWP(); toast("Ritmo apagado: ahora cuentas tú"); return; } WP.reps++; q("#wpN").textContent = WP.reps; beep(660, .05); buzz(15); speak(ES_NUM[WP.reps] || String(WP.reps)); };
+    q("#wpCount").onclick = () => { if (timed) return; if (WP.metro) { WP.metro = false; renderWP(); toast("Ritmo apagado: ahora cuentas tú"); return; } WP.reps++; q("#wpN").textContent = WP.reps; WP.tapAt = Date.now(); beep(660, .05); buzz(15); speak(ES_NUM[WP.reps] || String(WP.reps)); };
     if (q("#wpMinus")) q("#wpMinus").onclick = () => { WP.reps = Math.max(0, WP.reps - 1); q("#wpN").textContent = WP.reps; };
     if (q("#wpMetro")) q("#wpMetro").onclick = () => { WP.metro = !WP.metro; setWpPref("auto", WP.metro); WP.repStart = Date.now() + 300; WP.cue = 0; renderWP(); };
     if (q("#wpVoice")) q("#wpVoice").onclick = () => { const v = !wpSet().voice; setWpPref("voice", v); if (v) speak("Voz activada", true); else try { speechSynthesis.cancel(); } catch(e){} renderWP(); };
