@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.5";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.6";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -1836,10 +1836,13 @@ const P = {
    const top = [T.sh[0] + 3, T.sh[1] - 72], bot = add(onTrunk({hip, sh: T.sh}, .78, 15), [0, -5]), g = [lerp(top[0], bot[0], ezc(k)), lerp(top[1], bot[1], k)];
    return {ankle: kn ? ank : ank, knee: kn, hip, ...T, ...arm(T.sh, g, [.5, 1])};
  }},
- incline:{lab:["Empuja (1 s)","Baja (2–3 s)"], d:[1.1,2.2], fig:"incline", path:"grip", f: k => {
+ /* Recorrido vertical: la mancuerna baja en línea recta hasta la altura de la parte alta del pecho,
+    con el antebrazo vertical y el codo por debajo del torso (a 45–60° del cuerpo), y sube hasta quedar sobre el hombro. */
+ incline:{lab:["Empuja (1 s)","Baja (2–3 s)"], d:[1.1,2.2], fig:"incline", guide:["vert"], path:"grip", f: k => {
    const hip = [178, 158], T = trunk(hip, -50, 18), ank = standAnkle(236), kn = knee(hip, ank, [.2, -1]);
-   const bot = add(onTrunk({hip, sh: T.sh}, .9, 14), [6, 0]), top = [T.sh[0] + 4, T.sh[1] - 72], g = lp(bot, top, ezc(k));
-   return {ankle: ank, knee: kn, hip, ...T, ...arm(T.sh, g, [-.2, 1])};
+   const e = ezc(k), th = rad(lerp(75, -86, e)), r = L.ua * (1 - .55 * Math.sin(Math.PI * e));   // el codo sale hacia el lado: en vista lateral el brazo se ve más corto a mitad del recorrido
+   const elbow = add(T.sh, [r * Math.cos(th), r * Math.sin(th)]), bot = [T.sh[0] + L.ua * .26, T.sh[1] + L.ua * .97 - (L.fa + L.hand)], top = [T.sh[0] + 3, T.sh[1] - L.ua - L.fa - L.hand + 1];
+   return {ankle: ank, knee: kn, hip, ...T, elbow, grip: lp(bot, top, e)};
  }},
  chestpress:{lab:["Empuja (1 s)","Regresa (2–3 s)"], d:[1.1,2.2], fig:"seatback", path:"grip", f: k => {
    const hip = [118, 158], T = trunk(hip, -8), ank = standAnkle(176), kn = knee(hip, ank, [1, -.3]);
@@ -2094,7 +2097,7 @@ function props(ctx, fig, j, line, C, layer, spec){
     if (pr0 === "cablelow") { rect(262, 40, 8, FLOOR - 40); }
     if (fig === "chair") { rect(104, 166, 52, 6); line([107, 168], [107, 114], 5, C.prop); rect(106, 172, 4, FLOOR - 172); rect(150, 172, 4, FLOOR - 172); }
     if (fig === "stool") { rect(j.hip[0] - 24, j.hip[1] + 9, 46, 6); rect(j.hip[0] - 20, j.hip[1] + 15, 4, FLOOR - j.hip[1] - 15); rect(j.hip[0] + 14, j.hip[1] + 15, 4, FLOOR - j.hip[1] - 15); }
-    if (fig === "incline") { rect(j.hip[0] - 22, j.hip[1] + 10, 52, 7); rect(j.hip[0] - 2, j.hip[1] + 17, 6, FLOOR - j.hip[1] - 17); const u = unit(j.hip, j.sh), b = mul([u[1], -u[0]], 12); pad(add(j.hip, b), add(j.sh, add(b, mul(u, 8))), 8); }
+    if (fig === "incline") { rect(j.hip[0] - 22, j.hip[1] + 10, 52, 7); rect(j.hip[0] - 2, j.hip[1] + 17, 6, FLOOR - j.hip[1] - 17); const u = unit(j.hip, j.sh), b = mul([u[1], -u[0]], 12); pad(add(j.hip, b), add(j.sh, add(b, mul(u, 24))), 8); }
     return;
   }
   const pr = currentGuideEx && currentGuideEx.pr;
@@ -2271,6 +2274,71 @@ function openSheet(html, onMount){
 }
 function escClose(e){ if (e.key === "Escape") closeSheet(); }
 function closeSheet(){ cancelAnimationFrame(animRaf); $("#sheetRoot").innerHTML = ""; document.removeEventListener("keydown", escClose); lastFocus && lastFocus.focus && lastFocus.focus(); if (WP) { const c = $("#wpAnim"); if (c) startAnim(c, wpCur().ex, null); } }
+/* Cómo agarrar: orientación de las palmas en cada ejercicio */
+const GRIP = {
+  sq_barra:["prono", "Barra sobre la parte alta de la espalda (no en el cuello). Manos más anchas que los hombros, palmas hacia adelante y pulgar rodeando la barra. Muñecas rectas, codos apuntando al piso."],
+  sq_prensa:["manijas", "Agarra las manijas a los lados del asiento para mantener la cadera pegada. No empujes las rodillas con las manos."],
+  sq_goblet:["copa", "Sostén la mancuerna vertical frente al pecho con las dos manos en forma de copa bajo el disco de arriba, palmas hacia arriba. Codos apuntando al piso y pegados al cuerpo."],
+  sq_bw:["libre", "Sin agarre: brazos estirados al frente o manos juntas frente al pecho."],
+  sq_silla:["libre", "Sin agarre: brazos cruzados sobre el pecho. Si lo necesitas, apoya las manos en los muslos para ayudarte."],
+  hi_rdl:["prono", "Palmas mirando hacia tus muslos, manos al ancho de los hombros, justo por fuera de las piernas. La barra o las mancuernas rozan los muslos todo el recorrido."],
+  gl_hip:["prono", "Barra sobre la cadera, con almohadilla. Manos un poco por fuera de la cadera, palmas hacia abajo: solo la sujetas para que no ruede, no la empujas con los brazos."],
+  gl_bridge:["libre", "Sin agarre: brazos estirados en el suelo a los lados, palmas hacia abajo."],
+  lu_db:["neutro", "Una mancuerna en cada mano, brazos colgando a los lados y palmas mirando hacia tu cuerpo. Hombros abajo y atrás."],
+  lu_bw:["libre", "Sin agarre: manos en la cintura o brazos relajados a los lados."],
+  ke_maq:["manijas", "Agarra las manijas a los lados del asiento para no levantarte de él al subir las piernas."],
+  kf_maq:["manijas", "Agarra las manijas de la máquina (al frente si es acostado, a los lados si es sentado) para mantener la cadera apoyada."],
+  kf_banda:["libre", "Sin agarre: antebrazos apoyados en el suelo y banda en los tobillos."],
+  ca_talon:["libre", "Apoya una mano en una pared o barra solo para el equilibrio. Si llevas mancuernas, a los lados con las palmas mirando hacia tu cuerpo."],
+  hp_banca:["prono", "Palmas hacia tus pies, manos un poco más anchas que los hombros y pulgar rodeando la barra (nunca sin pulgar). Muñecas rectas, justo encima de los codos."],
+  hp_mancuernas:["prono", "Palmas hacia tus pies, con las dos mancuernas en línea como si fueran una barra. Si te molesta el hombro, gira las palmas para que se miren entre sí."],
+  hp_incl:["prono", "Palmas hacia tus pies, con las dos mancuernas en línea a la altura de la parte alta del pecho. Si te molesta el hombro, gira las palmas para que se miren entre sí."],
+  hp_maq:["prono", "Agarra las manijas a la altura de la mitad del pecho, palmas hacia abajo. Si la máquina tiene manijas verticales, palmas mirándose entre sí."],
+  hp_flex:["apoyo", "Manos en el suelo, un poco más anchas que los hombros, a la altura del pecho y dedos hacia adelante."],
+  vp_mancuernas:["prono", "Mancuernas a la altura de las orejas, palmas hacia adelante y codos un poco por delante del cuerpo, no abiertos del todo. Si te molesta el hombro, gira las palmas para que se miren entre sí."],
+  vp_maq:["prono", "Agarra las manijas a la altura de los hombros, palmas hacia adelante. Si tienen manijas verticales, palmas mirándose entre sí."],
+  vp_banda:["prono", "Pisa la banda y sujeta sus extremos a la altura de los hombros, palmas hacia adelante."],
+  vp_flexpies:["apoyo", "Manos en el suelo al ancho de los hombros y dedos hacia adelante."],
+  vl_jalon:["prono", "Barra con palmas hacia adelante (mirando lejos de ti), manos un poco más anchas que los hombros. Agarra con firmeza pero tira con los codos, no con las manos."],
+  vl_dom:["prono", "Palmas hacia adelante, manos un poco más anchas que los hombros. Si te cuesta mucho, prueba con las palmas hacia ti (trabaja más el bíceps)."],
+  vl_asis:["prono", "Palmas hacia adelante, manos un poco más anchas que los hombros. Si te cuesta mucho, prueba con las palmas hacia ti."],
+  vl_banda:["neutro", "Banda anclada arriba; sujeta cada extremo con las palmas mirándose entre sí y tira llevando los codos hacia el bolsillo."],
+  hl_polea:["neutro", "Con la manija en V: palmas mirándose entre sí. Con barra recta: palmas hacia abajo. Pecho alto y tira con los codos pegados."],
+  hl_mancuerna:["neutro", "Palma mirando hacia tu cuerpo y el brazo colgando bajo el hombro. Sube la mancuerna hacia la cadera, no hacia el pecho."],
+  hl_barra:["prono", "Palmas hacia ti (mirando a tus piernas), manos al ancho de los hombros. Lleva la barra hacia el ombligo."],
+  hl_banda:["neutro", "Sujeta los extremos con las palmas mirándose entre sí y tira llevando los codos atrás, pegados al cuerpo."],
+  hl_mochila:["neutro", "Sujeta la mochila por las asas o los lados, con las palmas mirándose entre sí, y llévala hacia el ombligo."],
+  la_mancuernas:["neutro", "Empieza con las palmas mirando hacia tu cuerpo. Al subir, las palmas quedan mirando al piso y el meñique nunca más alto que el pulgar."],
+  la_polea:["neutro", "Agarra la manija con la mano del lado contrario a la polea, palma mirando hacia tu cuerpo, y sube el brazo de lado."],
+  la_banda:["neutro", "Pisa la banda y sujeta los extremos con las palmas mirando hacia tu cuerpo; súbelas de lado hasta la altura de los hombros."],
+  bi_mancuernas:["supino", "Palmas hacia adelante (hacia arriba al subir) y codos pegados al cuerpo. Variante martillo: palmas mirándose entre sí, trabaja más el antebrazo."],
+  bi_barra:["supino", "Palmas hacia adelante (mirando lejos de ti), manos al ancho de los hombros y codos pegados al cuerpo."],
+  bi_polea:["supino", "Palmas hacia arriba, manos al ancho de los hombros y codos pegados al cuerpo."],
+  bi_banda:["supino", "Pisa la banda y sujeta los extremos con las palmas hacia adelante; codos pegados al cuerpo."],
+  tr_polea:["prono", "Con barra: palmas hacia abajo. Con cuerda: palmas mirándose entre sí y separa los extremos al final. Codos fijos al lado del cuerpo."],
+  tr_mancuerna:["copa", "Una mancuerna con las dos manos en forma de copa bajo el disco de arriba, palmas hacia arriba, detrás de la cabeza. Codos apuntando al techo."],
+  tr_fondos:["neutro", "Manos en las paralelas con las palmas mirando hacia tu cuerpo y los brazos rectos al inicio. Hombros abajo, lejos de las orejas."],
+  tr_banco:["apoyo", "Manos en el borde del banco al ancho de la cadera, palmas hacia abajo y dedos hacia adelante (hacia tus pies)."],
+  co_plancha:["apoyo", "Antebrazos en el suelo, codos justo debajo de los hombros y manos relajadas o con las palmas hacia abajo."],
+  co_birddog:["apoyo", "Manos bajo los hombros con las palmas en el suelo y dedos al frente. El brazo que estiras va con el pulgar hacia arriba."]
+};
+const GRIP_T = {prono:"Agarre prono: ves el dorso de tus manos", supino:"Agarre supino: ves tus palmas", neutro:"Agarre neutro: palmas mirándose", copa:"Las dos manos en copa", manijas:"Manijas de la máquina", apoyo:"Manos de apoyo", libre:"Sin agarre"};
+function gripSVG(t){
+  /* Las manos como las ve la persona al agarrar: palma clara = ve sus palmas; nudillos = ve el dorso; de canto = palmas mirándose */
+  const sk = SKIN[figOpts().skin] || "#c08a62";
+  const hand = (x, palm) => `<g transform="translate(${x} 24)"><rect x="-9" y="-12" width="18" height="22" rx="7" fill="${sk}"/>${[-6, -1, 4].map((fx, i) => `<rect x="${fx}" y="${i === 1 ? -26 : -24}" width="4.4" height="14" rx="2.2" fill="${sk}"/>`).join("")}<rect x="${x < 34 ? 7 : -13}" y="-6" width="6" height="11" rx="3" fill="${sk}" transform="rotate(${x < 34 ? 25 : -25} ${x < 34 ? 10 : -10} 0)"/>${palm ? `<ellipse cx="0" cy="0" rx="5.5" ry="6.5" fill="#fff" opacity=".45"/>` : `<path d="M-6 -11h3M-1 -12h3M4 -11h3" stroke="#000" stroke-opacity=".35" stroke-width="1.6" stroke-linecap="round"/>`}</g>`;
+  const edge = x => `<g transform="translate(${x} 24)"><rect x="-4.5" y="-24" width="9" height="34" rx="4.5" fill="${sk}"/><rect x="${x < 34 ? 3 : -7}" y="-8" width="4" height="10" rx="2" fill="${sk}" opacity=".8"/></g>`;
+  if (t === "prono") return hand(17, false) + hand(51, false);
+  if (t === "supino") return hand(17, true) + hand(51, true);
+  if (t === "neutro") return edge(18) + edge(50) + `<path d="M26 26h16M37 22l5 4-5 4M31 22l-5 4 5 4" stroke="var(--accent)" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  return "";
+}
+function gripHTML(ex, compact){
+  const g = GRIP[ex.id]; if (!g) return "";
+  const [t, txt] = g, svg = gripSVG(t);
+  if (compact) return `<div class="note" style="text-align:left"><b>${esc(GRIP_T[t].replace(/^Agarre (\w+):.*/, "Agarre $1"))}.</b> ${esc(txt)}</div>`;
+  return `<div class="card row" style="gap:12px;flex-wrap:nowrap;align-items:flex-start">${svg ? `<svg width="68" height="40" viewBox="0 0 68 40" role="img" aria-label="${esc(GRIP_T[t])}" style="flex:0 0 auto;margin-top:4px">${svg}</svg>` : ""}<div style="min-width:0"><div class="eyebrow">Cómo agarrar</div><b>${esc(GRIP_T[t])}</b><p class="small" style="margin:4px 0 0">${esc(txt)}</p>${svg ? `<p class="small muted" style="margin:4px 0 0">El dibujo muestra tus manos como tú las ves al agarrar.</p>` : ""}</div></div>`;
+}
 function guideHTML(ex){
   const g = GUIDES[ex.gd];
   const prim = Object.entries(ex.g).filter(([, f]) => f >= 1).map(([m]) => m), sec = Object.entries(ex.g).filter(([, f]) => f < 1).map(([m]) => m);
@@ -2283,6 +2351,7 @@ function guideHTML(ex){
       <button class="btn small" id="guideTg" aria-pressed="${S.guides !== false}">${S.guides !== false ? "Ocultar guías" : "Ver articulaciones y guías"}</button></div>
       ${S.guides !== false ? `<p class="small muted" style="margin-top:6px">Puntos = articulaciones. Línea verde = alineación que debes mantener. Línea azul = medio del pie o trayectoria correcta de la carga.</p>` : ""}</div>
     <div class="row"><span class="chip" style="background:color-mix(in srgb,var(--mus) 16%,var(--surface));color:var(--mus)">Trabaja: ${esc(prim.join(", ") || "–")}</span>${sec.length ? `<span class="chip">Ayuda: ${esc(sec.join(", "))}</span>` : ""}</div>
+    ${gripHTML(ex)}
     <div class="note"><b>Dónde debes sentirlo.</b> ${esc(g.feel)}</div>
     <div><h3 style="margin-bottom:8px">Paso a paso</h3><ol class="steps">${g.steps.map(s => `<li>${esc(s)}</li>`).join("")}</ol></div>
     <div><h3 style="margin-bottom:8px">Errores comunes</h3><ul class="clean">${g.errors.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>
@@ -3450,6 +3519,7 @@ function renderWP(){
       body = `<div class="stack" style="gap:12px"><div class="eyebrow">Prepárate · Ejercicio ${WP.i + 1} de ${WP.items.length}</div>
         <div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h2 style="min-width:0">${esc(c.ex.n)}</h2><button class="btn small" id="wpGuide">Ver técnica</button></div>
         <canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}"></canvas>
+        ${gripHTML(c.ex, true)}
         <div class="row" style="justify-content:center;gap:16px;flex-wrap:nowrap"><svg width="170" height="170" viewBox="0 0 170 170" aria-hidden="true"><circle cx="85" cy="85" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"/><circle id="prepArc" cx="85" cy="85" r="${R}" fill="none" stroke="var(--go)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.prepTotal)}" transform="rotate(-90 85 85)"/><text id="prepT" x="85" y="102" text-anchor="middle" font-size="50" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${Math.ceil(left)}</text></svg>
           <div class="stack" style="gap:6px;min-width:0">${WP.prepWait ? `<b>${WP.i === firstKgComp(WP.items) ? "Primero, calienta" : "Series de aproximación"}</b><span class="small">${WP.warm.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" → ")}, descansando 1 min entre ellas y sin llegar al cansancio.</span><span class="small muted">Cuando termines toca "Ya calenté": tendrás ${WP.prepTotal} s para cargar el peso de trabajo.</span>` : `<b>Acomódate</b><span class="small muted">${isMachine(c.ex) ? "Ajusta el asiento y los apoyos, pon el peso y toma posición." : "Toma el peso, colócate y respira."} Al llegar a cero empieza la serie.</span>`}</div></div>
         ${c.kg ? `<div class="stepper"><button class="rbtn" id="kgm" aria-label="Menos peso">−</button><div style="text-align:center;flex:1"><div class="num" style="font-size:34px" id="wpKg">${c.st.kg === "" ? "–" : fmt(+c.st.kg)}</div><div class="small muted">kg${c.ex.assist ? " de asistencia" : ""} · ${c.rx.lo}–${c.rx.hi} ${UNIT_L[c.rx.unit]}</div></div><button class="rbtn" id="kgp" aria-label="Más peso">+</button></div>` : ""}
