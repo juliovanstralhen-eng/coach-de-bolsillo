@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "6.6";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "6.7";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -933,7 +933,7 @@ function needsWarm(items, i, p = S.profile){
   if (st === "masa") { const low = e => LOWER.has(e.pat); return items.slice(0, i).filter(heavy).some(e => low(e) === low(ex)) ? 0 : 2; }
   return 0;
 }
-const wuFor = (items, i, kg) => { const n = needsWarm(items, i); return n ? warmupFor(items[i], kg, n === 1) : null; };
+const wuFor = (items, i, kg) => { if (S.wp && S.wp.ramp === false) return null; const n = needsWarm(items, i); return n ? warmupFor(items[i], kg, n === 1) : null; };
 /* Calentamiento general: minutos, intensidad y movilidad según objetivo y músculos del día */
 function genWarm(p, items){
   const st = wuStyle(p), eq = equipSet(p), mins = {fuerza: 6, masa: 5, activo: 6, suave: 8}[st];
@@ -3260,6 +3260,7 @@ function wpPrefsHTML(){
   const st = wuStyle(S.profile), wdesc = {fuerza: "Fuerza: 4 series de aproximación en el primer básico (40 → 60 → 75 → 85 %) y 2 en los siguientes.", masa: "Masa: 2 series de aproximación en el primer básico (50 % y 80 %) y 1 al cambiar de pierna a torso o al revés.", activo: "Tu objetivo: 2 series de aproximación en el primer básico (50 % y 75 %).", suave: "1 serie ligera en el primer ejercicio con peso, y calentamiento general más largo."}[st];
   return `<div class="section"><h2>Rutina guiada</h2><div class="card stack">
     <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Calentamiento general</b><br><span class="muted">${g.mins} min antes del primer ejercicio, más movilidad</span></span>${seg("gen", [[true, "Sí"], [false, "No"]])}</div>
+    <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Series de aproximación</b><br><span class="muted">1–2 series ligeras del primer ejercicio pesado, antes del peso de trabajo</span></span>${seg("ramp", [[true, "Sí"], [false, "No"]])}</div>
     <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Tiempo para acomodarte</b><br><span class="muted">Antes de cada ejercicio</span></span>${seg("prep", [[15, "15 s"], [30, "30 s"], [0, "No"]])}</div>
     <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Contar en voz alta</b></span>${seg("voice", [[true, "Sí"], [false, "No"]])}</div>
     <div class="row between" style="flex-wrap:nowrap;gap:10px"><span class="small"><b>Ritmo automático</b><br><span class="muted">Cuenta las repeticiones al tempo de la animación</span></span>${seg("auto", [[true, "Sí"], [false, "No"]])}</div>
@@ -3417,7 +3418,7 @@ function startWorkout(){
   renderWP(); WP.timer = setInterval(tickWP, 200); keepAwake();
 }
 /* Preferencias de la rutina: cuenta para acomodarse, ritmo automático y voz */
-const wpSet = () => Object.assign({prep: 15, voice: true, auto: true}, S.wp || {});
+const wpSet = () => Object.assign({prep: 15, voice: true, auto: true, ramp: true}, S.wp || {});
 function setWpPref(k, v){ S.wp = Object.assign(wpSet(), {[k]: v}); save(); }
 const ES_NUM = ["cero","una","dos","tres","cuatro","cinco","seis","siete","ocho","nueve","diez","once","doce","trece","catorce","quince","dieciséis","diecisiete","dieciocho","diecinueve","veinte"];
 function speak(t, force){
@@ -3520,10 +3521,11 @@ function renderWP(){
         <div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h2 style="min-width:0">${esc(c.ex.n)}</h2><button class="btn small" id="wpGuide">Ver técnica</button></div>
         <canvas class="anim wpanim" id="wpAnim" aria-label="Animación de ${esc(c.ex.n)}"></canvas>
         ${gripHTML(c.ex, true)}
-        <div class="row" style="justify-content:center;gap:16px;flex-wrap:nowrap"><svg width="170" height="170" viewBox="0 0 170 170" aria-hidden="true"><circle cx="85" cy="85" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"/><circle id="prepArc" cx="85" cy="85" r="${R}" fill="none" stroke="var(--go)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.prepTotal)}" transform="rotate(-90 85 85)"/><text id="prepT" x="85" y="102" text-anchor="middle" font-size="50" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${Math.ceil(left)}</text></svg>
-          <div class="stack" style="gap:6px;min-width:0">${WP.prepWait ? `<b>${WP.i === firstKgComp(WP.items) ? "Primero, calienta" : "Series de aproximación"}</b><span class="small">${WP.warm.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" → ")}, descansando 1 min entre ellas y sin llegar al cansancio.</span><span class="small muted">Cuando termines toca "Ya calenté": tendrás ${WP.prepTotal} s para cargar el peso de trabajo.</span>` : `<b>Acomódate</b><span class="small muted">${isMachine(c.ex) ? "Ajusta el asiento y los apoyos, pon el peso y toma posición." : "Toma el peso, colócate y respira."} Al llegar a cero empieza la serie.</span>`}</div></div>
+        <div class="row" style="justify-content:center;gap:16px;flex-wrap:nowrap"><svg width="${WP.prepWait ? 110 : 170}" height="${WP.prepWait ? 110 : 170}" viewBox="0 0 170 170" aria-hidden="true" style="flex:0 0 auto"><circle cx="85" cy="85" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"/><circle id="prepArc" cx="85" cy="85" r="${R}" fill="none" stroke="var(--go)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / WP.prepTotal)}" transform="rotate(-90 85 85)"/><text id="prepT" x="85" y="102" text-anchor="middle" font-size="50" font-weight="700" fill="var(--ink)" font-family="Barlow Condensed, Arial Narrow, sans-serif">${Math.ceil(left)}</text></svg>
+          <div class="stack" style="gap:6px;min-width:0">${WP.prepWait ? `<b>${WP.warm.length > 1 ? "Series de aproximación" : "Serie de aproximación"} <span class="muted" style="font-weight:400">(opcional)</span></b><span class="small">${WP.warm.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" → ")}${WP.warm.length > 1 ? ", con 1 min entre ellas" : ""}, sin cansarte.</span><span class="small muted">No es otro calentamiento: ${WP.warm.length > 1 ? "son series ligeras" : "es una serie ligera"} de este mismo ejercicio para ensayar el movimiento antes del peso de trabajo. No cuenta${WP.warm.length > 1 ? "n" : ""} en tus ${c.rx.sets} series. Si ya la${WP.warm.length > 1 ? "s" : ""} hiciste o no la${WP.warm.length > 1 ? "s" : ""} quieres, empieza la serie.</span>` : `<b>Acomódate</b><span class="small muted">${isMachine(c.ex) ? "Ajusta el asiento y los apoyos, pon el peso y toma posición." : "Toma el peso, colócate y respira."} Al llegar a cero empieza la serie.</span>`}</div></div>
         ${c.kg ? `<div class="stepper"><button class="rbtn" id="kgm" aria-label="Menos peso">−</button><div style="text-align:center;flex:1"><div class="num" style="font-size:34px" id="wpKg">${c.st.kg === "" ? "–" : fmt(+c.st.kg)}</div><div class="small muted">kg${c.ex.assist ? " de asistencia" : ""} · ${c.rx.lo}–${c.rx.hi} ${UNIT_L[c.rx.unit]}</div></div><button class="rbtn" id="kgp" aria-label="Más peso">+</button></div>` : ""}
-        <div class="row" style="justify-content:center">${WP.prepWait ? `<button class="btn primary big" id="ppWarm">Ya calenté</button><button class="btn" id="ppGo">Empezar la serie ya</button>` : `<button class="btn" id="ppAdd">+15 s</button><button class="btn primary" id="ppGo">Estoy listo</button>`}</div>
+        <div class="row" style="justify-content:center">${WP.prepWait ? `<button class="btn primary big" id="ppGo">Empezar la serie</button><button class="btn" id="ppWarm">Hice la aproximación</button>` : `<button class="btn" id="ppAdd">+15 s</button><button class="btn primary" id="ppGo">Estoy listo</button>`}</div>
+        ${WP.prepWait ? `<div class="row" style="justify-content:center"><button class="btn small ghost" id="ppNoRamp">No volver a sugerirlas</button></div>` : ""}
         ${busyParts(c.ex).length ? `<div class="row" style="justify-content:center"><button class="btn small ghost" id="wpBusy">Máquina ocupada</button><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>` : `<div class="row" style="justify-content:center"><button class="btn small ghost" id="wpSkip">Saltar ejercicio</button></div>`}
         <div class="row small" style="justify-content:center;gap:6px"><span class="muted">Tiempo para acomodarte:</span>${[[15, "15 s"], [30, "30 s"], [0, "Sin cuenta"]].map(([v, l]) => `<button class="btn small ${pr === v ? "primary" : "ghost"}" data-prep="${v}" aria-pressed="${pr === v}" style="min-height:30px">${l}</button>`).join("")}</div></div>`;
     } else if (WP.phase === "switch") {
@@ -3575,6 +3577,7 @@ function bindWP(){
     if (q("#ppAdd")) q("#ppAdd").onclick = () => { WP.prepEnd += 15000; WP.prepTotal += 15; WP.lastCount = null; };
     if (q("#wpBusy")) q("#wpBusy").onclick = () => openBusy(c.ex.id, WP.day, WP.items, msg => { if (WP) { WP.flash = msg || ""; wpRebuild(); } });
     q("#wpSkip").onclick = () => { c.d.skip = true; saveDraft(); if (!wpFindNext()) WP.phase = "done"; else wpPrepSet(); renderWP(); };
+    if (q("#ppNoRamp")) q("#ppNoRamp").onclick = () => { setWpPref("ramp", false); toast("Listo: no se sugerirán series de aproximación. Puedes activarlas en Plan › Rutina guiada."); WP.warm = null; q("#ppGo").click(); };
     if (q("#ppWarm")) q("#ppWarm").onclick = () => { WP.prepWait = false; WP.prepEnd = Date.now() + WP.prepTotal * 1000; WP.lastCount = null; speak("Carga el peso de trabajo"); renderWP(); };
     q("#ppGo").onclick = () => { speak("¡Vamos!"); beep(988, .2); wpBeginSet(); };
     el.querySelectorAll("[data-prep]").forEach(b => b.onclick = () => { const v = +b.dataset.prep; setWpPref("prep", v); if (WP.prepWait) { WP.prepTotal = Math.max(v, 15); renderWP(); return; } if (!v) { wpBeginSet(); return; } WP.prepTotal = v; WP.prepEnd = Date.now() + v * 1000; WP.lastCount = null; renderWP(); });
