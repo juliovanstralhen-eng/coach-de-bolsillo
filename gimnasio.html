@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gymnós · Retos del gimnasio</title>
+<meta name="theme-color" content="#0F6B6F">
+<link rel="icon" href="icons/icon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#ECEFEE;--surface:#FFFFFF;--sunk:#DDE3E2;--line:#C8D1CF;--ink:#10201F;--muted:#52625F;--accent:#0F6B6F;--accent-ink:#FFFFFF;--accent-soft:#D6ECEB;
+  --good:#2E7D3A;--good-soft:#DCEFDD;--warn:#93590A;--warn-soft:#FBEBCF;--bad:#B42318;--bad-soft:#FBE0DD;--go:#F2A516;--go-ink:#1F1300;--go-soft:#FCEFD2;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--r:10px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0D1615;--surface:#15201F;--sunk:#0A1110;--line:#263533;--ink:#E4EEEC;--muted:#8FA3A0;--accent:#4FC1BF;--accent-ink:#04201F;--accent-soft:#123634;
+  --good:#6BCB77;--good-soft:#15301A;--warn:#F0B34A;--warn-soft:#3A2A0E;--bad:#FF8A7A;--bad-soft:#3D1814;--go:#FFB833;--go-ink:#1F1300;--go-soft:#3A2C0B;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0D1615;--surface:#15201F;--sunk:#0A1110;--line:#263533;--ink:#E4EEEC;--muted:#8FA3A0;--accent:#4FC1BF;--accent-ink:#04201F;--accent-soft:#123634;
+  --good:#6BCB77;--good-soft:#15301A;--warn:#F0B34A;--warn-soft:#3A2A0E;--bad:#FF8A7A;--bad-soft:#3D1814;--go:#FFB833;--go-ink:#1F1300;--go-soft:#3A2C0B;color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+[hidden]{display:none!important}
+.wrap{max-width:980px;margin:0 auto;padding-block:18px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);text-transform:uppercase;letter-spacing:.01em;line-height:1.05;margin:0;text-wrap:balance}
+h1{font-size:34px}h2{font-size:24px}h3{font-size:19px}
+p{margin:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:24px;font-weight:700;text-transform:uppercase}
+.brand b{color:var(--accent)}
+.logo{width:34px;height:34px;flex:none}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.muted{color:var(--muted)}.small{font-size:13px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.between{justify-content:space-between}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+.btn{font:600 14px/1 var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;min-height:42px;padding:0 18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn.primary{background:var(--go);border-color:var(--go);color:var(--go-ink)}
+.btn.acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{min-height:34px;padding:0 12px;font-size:13px}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+input,select,textarea{font:inherit;font-size:max(16px,1em);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;min-height:42px;padding:8px 10px;width:100%}
+textarea{min-height:70px;resize:vertical}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px}.check input{width:auto;min-height:0;margin-top:3px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{font:600 14px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:9px 16px;cursor:pointer}
+.tabs button[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.note{border-radius:var(--r);padding:12px 14px;background:var(--accent-soft);font-size:14px}
+.note.warn{background:var(--warn-soft)}.note.bad{background:var(--bad-soft)}.note.good{background:var(--good-soft)}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--sunk);color:var(--ink)}
+.chip.good{background:var(--good-soft);color:var(--good)}.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.code{font-family:var(--display);font-weight:700;letter-spacing:.14em;font-size:30px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}.kpi .v{font-family:var(--display);font-size:30px;font-weight:700;line-height:1}.kpi .l{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}tr:last-child td{border-bottom:0}tr.off td{color:var(--muted);text-decoration:line-through}
+.bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+/* Recepción */
+.recep{position:fixed;inset:0;z-index:50;background:#0F6B6F;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.8vh;text-align:center;
+  padding-block:calc(env(safe-area-inset-top,0px) + 20px) calc(env(safe-area-inset-bottom,0px) + 20px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
+.recep h1{font-size:clamp(28px,5vh,56px)}
+.recep .qr{background:#fff;border-radius:18px;padding:12px;width:min(50vh,82vw);aspect-ratio:1;max-width:100%}
+.recep .qr svg{width:100%;height:100%;display:block}
+.recep .big{font-family:var(--display);font-weight:700;font-size:clamp(44px,9vh,110px);letter-spacing:.18em;line-height:1}
+.recep .tbar{width:min(50vh,82vw);height:8px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden}.recep .tbar i{display:block;height:100%;background:#F2A516}
+.recep .how{font-size:clamp(15px,2.2vh,22px);max-width:46ch;opacity:.92}
+.recep .x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:max(12px,env(safe-area-inset-right,0px));background:rgba(255,255,255,.15);color:#fff;border-color:transparent}
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet .panel{background:var(--bg);width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18px)}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:60;max-width:90vw}
+</style></head><body>
+<div class="wrap">
+  <header class="top"><div class="brand"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0F6B6F"/><path d="M45.6 18.9A19 19 0 1 0 51 34.5" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round"/><path d="M30 32.5h19" stroke="#F2A516" stroke-width="3" stroke-linecap="round"/><rect x="28.6" y="28" width="3" height="9" rx="1.3" fill="#F2A516"/><rect x="32.3" y="25" width="3.6" height="15" rx="1.5" fill="#F2A516"/><rect x="43.4" y="25" width="3.6" height="15" rx="1.5" fill="#F2A516"/><rect x="47.7" y="28" width="3" height="9" rx="1.3" fill="#F2A516"/></svg><span>Gym<b>nós</b> · Retos</span></div>
+    <span class="chip" id="modo"></span></header>
+  <main id="view"></main>
+</div>
+<div id="recep" class="recep" hidden></div>
+<div id="sheet"></div>
+<div id="toast" role="status" hidden></div>
+<script>var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,(function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1}))},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}((function(){return qrcode}));</script>
+<script>/* ============ Gymnós · Retos: conexión con el servidor ============
+   Con GYMNOS_SERVIDOR.url y .anon llenos habla con Supabase (servidor/retos.sql).
+   Vacíos: modo demostración, todo en este navegador (sirve para probar panel y app en el mismo equipo). */
+const GYMNOS_SERVIDOR = {url: "", anon: ""};
+const Retos = (() => {
+  const SV = GYMNOS_SERVIDOR, live = !!(SV.url && SV.anon), SES = "gymnos-retos-sesion", DEMO = "gymnos-retos-demo";
+  const get = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+  const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const ERR = {codigo_invalido: "Ese código ya cambió o no es válido. Escanea o escribe el que se ve ahora en la recepción.", demasiados_intentos: "Demasiados intentos fallidos. Espera 10 minutos y vuelve a intentarlo.",
+    no_inscrito: "Primero únete a un reto de este gimnasio.", reto_no_existe: "No encontramos un reto activo con ese código.", reto_terminado: "Ese reto ya terminó.",
+    cupo_lleno: "El gimnasio llegó al límite de personas de su plan. Avísale en la recepción.", alias_invalido: "Escribe un nombre o apodo de 2 a 30 letras.",
+    fuera_del_gimnasio: "Tu ubicación está lejos del gimnasio. La asistencia solo se registra estando allí.", falta_ubicacion: "Este reto pide tu ubicación para confirmar que estás en el gimnasio.",
+    licencia_invalida: "Esa licencia no existe o ya se usó.", clave_invalida: "Esa clave del panel no es correcta.", falta_ubicacion_gym: "Primero guarda la ubicación del gimnasio en Ajustes.",
+    sin_sesion: "No pudimos crear tu sesión. Revisa tu conexión.", red: "Sin conexión con el servidor. Revisa tu internet e inténtalo de nuevo."};
+  const fail = code => { const e = new Error(ERR[code] || code); e.code = code; throw e; };
+  /* --- Código que cambia cada 30 s (igual que en el servidor) --- */
+  async function codigo(secreto, ventana){
+    const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secreto), {name: "HMAC", hash: "SHA-256"}, false, ["sign"]);
+    const h = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(String(ventana))));
+    return String((((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) & 0x7fffffff) % 1000000).padStart(6, "0");
+  }
+  const qrTexto = (gym, cod) => `GYMNOS1|${gym}|${cod}`;
+  const leerQR = t => { const m = /^GYMNOS1\|([0-9a-f-]{36})\|(\d{6})$/.exec(String(t || "").trim()); return m ? {gimnasio: m[1], codigo: m[2]} : null; };
+  /* --- Supabase (REST) --- */
+  async function sesion(){
+    let s = get(SES);
+    if (s && s.exp > Date.now() + 60000) return s.token;
+    try {
+      const r = s && s.refresh ? await fetch(`${SV.url}/auth/v1/token?grant_type=refresh_token`, {method: "POST", headers: {apikey: SV.anon, "Content-Type": "application/json"}, body: JSON.stringify({refresh_token: s.refresh})}) : null;
+      let j = r && r.ok ? await r.json() : null;
+      if (!j) { const r2 = await fetch(`${SV.url}/auth/v1/signup`, {method: "POST", headers: {apikey: SV.anon, "Content-Type": "application/json"}, body: JSON.stringify({data: {}})}); j = r2.ok ? await r2.json() : null; }
+      if (!j || !j.access_token) fail("sin_sesion");
+      put(SES, {token: j.access_token, refresh: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000});
+      return j.access_token;
+    } catch (e) { if (e.code) throw e; fail("red"); }
+  }
+  async function rpc(fn, args, conUsuario){
+    const tok = conUsuario ? await sesion() : SV.anon; let r;
+    try { r = await fetch(`${SV.url}/rest/v1/rpc/${fn}`, {method: "POST", headers: {apikey: SV.anon, Authorization: "Bearer " + tok, "Content-Type": "application/json"}, body: JSON.stringify(args || {})}); }
+    catch (e) { fail("red"); }
+    const j = await r.json().catch(() => null);
+    if (!r.ok) fail((j && (j.message || j.hint)) || "red");
+    return j;
+  }
+  /* --- Demostración: misma lógica, guardada en este navegador --- */
+  const D = () => get(DEMO) || {lic: {"DEMO-GYM": {cupo: 300, usada: null}}, gym: {}, reto: {}, miembro: [], insc: [], asis: [], intento: [], seq: 1};
+  const W = d => put(DEMO, d);
+  const rnd = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, "0")).join("");
+  const hoyEn = () => new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
+  const yo = () => { let s = get(SES); if (!s || !s.demo) { s = {demo: rnd(8)}; put(SES, s); } return s.demo; };
+  const adminDe = (d, clave) => { const g = Object.values(d.gym).find(x => x.clave === clave); if (!g) fail("clave_invalida"); return g; };
+  const cuenta = (d, gid, u, r) => d.asis.filter(a => a.gimnasio_id === gid && a.usuario === u && !a.anulada && a.dia >= r.inicio && a.dia <= r.fin).length;
+  const aliasDe = (d, gid, u) => (d.miembro.find(m => m.gimnasio_id === gid && m.usuario === u) || {}).alias || "—";
+  const demo = {
+    hora_servidor: () => Date.now(),
+    crear_gimnasio({p_licencia, p_nombre, p_zona}){ const d = D(), k = String(p_licencia || "").trim().toUpperCase(), l = d.lic[k]; if (!l || l.usada) fail("licencia_invalida");
+      const id = crypto.randomUUID(), clave = rnd(12); d.gym[id] = {id, nombre: String(p_nombre).trim(), zona: p_zona || "America/Bogota", lat: null, lng: null, radio: 200, cupo: l.cupo, secreto: rnd(32), clave}; l.usada = id; W(d);
+      return {gimnasio_id: id, clave_admin: clave, cupo: l.cupo}; },
+    datos_gimnasio({p_clave}){ const d = D(), g = adminDe(d, p_clave); return {id: g.id, nombre: g.nombre, zona: g.zona, lat: g.lat, lng: g.lng, radio: g.radio, cupo: g.cupo, miembros: d.miembro.filter(m => m.gimnasio_id === g.id).length, secreto: g.secreto, ahora_ms: Date.now()}; },
+    ubicar_gimnasio({p_clave, p_lat, p_lng, p_radio}){ const d = D(), g = adminDe(d, p_clave); Object.assign(d.gym[g.id], {lat: p_lat, lng: p_lng, radio: Math.max(50, Math.min(2000, p_radio || 200))}); W(d); return {ok: true}; },
+    crear_reto({p_clave, p_titulo, p_meta, p_inicio, p_fin, p_premio, p_reglas, p_geocerca}){ const d = D(), g = adminDe(d, p_clave); if (p_geocerca && g.lat == null) fail("falta_ubicacion_gym");
+      const abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let cod; do { cod = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => abc[b % abc.length]).join(""); } while (Object.values(d.reto).some(r => r.codigo === cod));
+      const id = crypto.randomUUID(); d.reto[id] = {id, gimnasio_id: g.id, codigo: cod, titulo: p_titulo.trim(), meta: +p_meta, inicio: p_inicio, fin: p_fin, premio: p_premio || null, reglas: p_reglas || null, geocerca: !!p_geocerca, activo: true}; W(d); return {id, codigo: cod}; },
+    retos_gimnasio({p_clave}){ const d = D(), g = adminDe(d, p_clave); return Object.values(d.reto).filter(r => r.gimnasio_id === g.id).sort((a, b) => a.inicio < b.inicio ? 1 : -1).map(r => { const ins = d.insc.filter(i => i.reto_id === r.id);
+      return {...r, inscritos: ins.length, cumplieron: ins.filter(i => cuenta(d, g.id, i.usuario, r) >= r.meta).length}; }); },
+    cerrar_reto({p_clave, p_reto}){ const d = D(), g = adminDe(d, p_clave), r = d.reto[p_reto]; if (r && r.gimnasio_id === g.id) { r.activo = false; W(d); } return {ok: !!r}; },
+    tabla_reto_admin({p_clave, p_reto}){ const d = D(), g = adminDe(d, p_clave), r = d.reto[p_reto]; if (!r || r.gimnasio_id !== g.id) fail("reto_no_existe");
+      return d.insc.filter(i => i.reto_id === r.id).map(i => { const xs = d.asis.filter(a => a.gimnasio_id === g.id && a.usuario === i.usuario && !a.anulada && a.dia >= r.inicio && a.dia <= r.fin);
+        return {alias: aliasDe(d, g.id, i.usuario), unido: i.unido, asistencias: xs.length, ultima: xs.length ? xs.at(-1).hora : null}; }).sort((a, b) => b.asistencias - a.asistencias || String(a.ultima).localeCompare(String(b.ultima))); },
+    asistencias_gimnasio({p_clave}){ const d = D(), g = adminDe(d, p_clave); return d.asis.filter(a => a.gimnasio_id === g.id).sort((a, b) => a.hora < b.hora ? 1 : -1).map(a => ({id: a.id, alias: aliasDe(d, g.id, a.usuario), dia: a.dia, hora: a.hora, distancia_m: a.distancia_m, anulada: a.anulada, motivo: a.motivo})); },
+    anular_asistencia({p_clave, p_id, p_motivo, p_anular}){ const d = D(), g = adminDe(d, p_clave), a = d.asis.find(x => x.id === p_id && x.gimnasio_id === g.id); if (a) { a.anulada = p_anular !== false; a.motivo = a.anulada ? (p_motivo || null) : null; W(d); } return {ok: !!a}; },
+    unirse_reto({p_codigo, p_alias}){ const d = D(), u = yo(), al = String(p_alias || "").trim(); if (al.length < 2 || al.length > 30) fail("alias_invalido");
+      const r = Object.values(d.reto).find(x => x.codigo === String(p_codigo || "").trim().toUpperCase()); if (!r || !r.activo) fail("reto_no_existe"); if (hoyEn() > r.fin) fail("reto_terminado");
+      const g = d.gym[r.gimnasio_id], m = d.miembro.find(x => x.gimnasio_id === g.id && x.usuario === u);
+      if (!m) { if (d.miembro.filter(x => x.gimnasio_id === g.id).length >= g.cupo) fail("cupo_lleno"); d.miembro.push({gimnasio_id: g.id, usuario: u, alias: al}); } else m.alias = al;
+      if (!d.insc.some(i => i.reto_id === r.id && i.usuario === u)) d.insc.push({reto_id: r.id, usuario: u, unido: new Date().toISOString()}); W(d);
+      return {reto_id: r.id, gimnasio_id: g.id, gimnasio: g.nombre, titulo: r.titulo}; },
+    salir_reto({p_reto}){ const d = D(), u = yo(); d.insc = d.insc.filter(i => !(i.reto_id === p_reto && i.usuario === u)); W(d); return {ok: true}; },
+    mis_retos(){ const d = D(), u = yo(), hoy = hoyEn(); return d.insc.filter(i => i.usuario === u).map(i => { const r = d.reto[i.reto_id], g = d.gym[r.gimnasio_id];
+      return {...r, gimnasio: g.nombre, hoy, mias: cuenta(d, g.id, u, r), hoy_ok: d.asis.some(a => a.gimnasio_id === g.id && a.usuario === u && a.dia === hoy && !a.anulada), inscritos: d.insc.filter(x => x.reto_id === r.id).length}; }).sort((a, b) => a.fin < b.fin ? -1 : 1); },
+    tabla_reto({p_reto}){ const d = D(), u = yo(), r = d.reto[p_reto]; if (!r || !d.insc.some(i => i.reto_id === p_reto && i.usuario === u)) fail("no_inscrito");
+      return d.insc.filter(i => i.reto_id === r.id).map(i => { const xs = d.asis.filter(a => a.gimnasio_id === r.gimnasio_id && a.usuario === i.usuario && !a.anulada && a.dia >= r.inicio && a.dia <= r.fin);
+        return {alias: aliasDe(d, r.gimnasio_id, i.usuario), yo: i.usuario === u, asistencias: xs.length, ultima: xs.length ? xs.at(-1).hora : null}; }).sort((a, b) => b.asistencias - a.asistencias || String(a.ultima).localeCompare(String(b.ultima))); },
+    async registrar_asistencia({p_gimnasio, p_codigo, p_lat, p_lng}){ const d = D(), u = yo(), g = d.gym[p_gimnasio];
+      if (!g || !d.miembro.some(m => m.gimnasio_id === g.id && m.usuario === u)) fail("no_inscrito");
+      if (d.intento.filter(t => t.usuario === u && !t.ok && t.hora > Date.now() - 600000).length >= 5) fail("demasiados_intentos");
+      const v = Math.floor(Date.now() / 30000), c = String(p_codigo || "").trim();
+      if (c !== await codigo(g.secreto, v) && c !== await codigo(g.secreto, v - 1)) { d.intento.push({usuario: u, ok: false, hora: Date.now()}); W(d); return {ok: false, error: "codigo_invalido"}; }
+      const hoy = hoyEn(); let dist = null;
+      if (p_lat != null && p_lng != null && g.lat != null) { const R = 6371000, rad = x => x * Math.PI / 180, a = Math.sin(rad(p_lat - g.lat) / 2) ** 2 + Math.cos(rad(g.lat)) * Math.cos(rad(p_lat)) * Math.sin(rad(p_lng - g.lng) / 2) ** 2; dist = Math.round(2 * R * Math.asin(Math.sqrt(a))); }
+      const cerca = d.insc.some(i => i.usuario === u && d.reto[i.reto_id].gimnasio_id === g.id && d.reto[i.reto_id].activo && d.reto[i.reto_id].geocerca && hoy >= d.reto[i.reto_id].inicio && hoy <= d.reto[i.reto_id].fin);
+      if (cerca && g.lat != null && (dist == null || dist > g.radio)) { d.intento.push({usuario: u, ok: false, hora: Date.now()}); W(d); return {ok: false, error: dist == null ? "falta_ubicacion" : "fuera_del_gimnasio", distancia_m: dist}; }
+      d.intento.push({usuario: u, ok: true, hora: Date.now()}); const ya = d.asis.some(a => a.gimnasio_id === g.id && a.usuario === u && a.dia === hoy);
+      if (!ya) d.asis.push({id: d.seq++, gimnasio_id: g.id, usuario: u, dia: hoy, hora: new Date().toISOString(), distancia_m: dist, anulada: false, motivo: null});
+      d.intento = d.intento.filter(t => t.hora > Date.now() - 864e5); W(d); return {ok: true, ya_registrada: ya, dia: hoy, gimnasio: g.nombre}; }
+  };
+  const USR = new Set(["unirse_reto", "salir_reto", "mis_retos", "tabla_reto", "registrar_asistencia"]);
+  async function call(fn, args){ if (live) return rpc(fn, args, USR.has(fn)); try { return await demo[fn](args || {}); } catch (e) { if (e.code) throw e; throw e; } }
+  return {live, call, codigo, qrTexto, leerQR, ERR, msg: e => (e && (ERR[e.code] || e.message)) || ERR.red};
+})();
+</script>
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const KEY = "gymnos-panel-clave";
+const lsG = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsS = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+let clave = lsG(KEY), G = null, tab = "retos", offset = 0;
+const toast = m => { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200); };
+const fmtD = d => { const [y, m, dd] = String(d).slice(0, 10).split("-"); return `${+dd} ${["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][m - 1]}`; };
+const fmtH = t => new Date(t).toLocaleTimeString("es-CO", {hour: "numeric", minute: "2-digit"});
+const hoyISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const addD = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+$("#modo").textContent = Retos.live ? "Conectado" : "Modo demostración";
+$("#modo").className = "chip " + (Retos.live ? "good" : "warn");
+function sheet(html, mount){ const s = $("#sheet"); s.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="panel stack">${html}</div></div>`; const el = s.firstElementChild;
+  el.addEventListener("click", e => { if (e.target === el || e.target.closest("[data-close]")) s.innerHTML = ""; }); mount && mount(el); }
+async function load(){
+  if (!clave) return renderStart();
+  try { G = await Retos.call("datos_gimnasio", {p_clave: clave}); offset = G.ahora_ms - Date.now(); render(); }
+  catch (e) { if (e.code === "clave_invalida") { clave = null; lsS(KEY, null); return renderStart(Retos.msg(e)); } $("#view").innerHTML = `<div class="note bad">${esc(Retos.msg(e))}</div><button class="btn" onclick="load()">Reintentar</button>`; }
+}
+function renderStart(err){
+  $("#view").innerHTML = `<div class="stack" style="max-width:620px">
+    <div class="eyebrow">Panel del gimnasio</div><h1>Retos con asistencia verificada</h1>
+    <p class="muted">Crea retos para tus afiliados. La asistencia se registra escaneando en la recepción un código que cambia cada 30 segundos, así nadie suma entrenamientos desde la casa.</p>
+    ${err ? `<div class="note bad">${esc(err)}</div>` : ""}
+    <div class="card stack"><h3>Activar mi gimnasio</h3>
+      <label class="field">Licencia de Gymnós<input id="lic" autocomplete="off" placeholder="${Retos.live ? "La que te entregó Gymnós" : "En la demostración: DEMO-GYM"}"></label>
+      <label class="field">Nombre del gimnasio<input id="gnom" maxlength="80" placeholder="Tu Gimnasio"></label>
+      <label class="field">Zona horaria<select id="gtz">${[["America/Bogota","Colombia, Perú, Ecuador"],["America/Mexico_City","México (centro)"],["America/Santiago","Chile"],["America/Argentina/Buenos_Aires","Argentina"],["America/Caracas","Venezuela"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
+      <button class="btn primary" id="act">Activar</button><div id="actMsg"></div></div>
+    <div class="card stack"><h3>Ya tengo la clave del panel</h3><label class="field">Clave del panel<input id="cl" autocomplete="off"></label><button class="btn" id="ent">Entrar</button></div></div>`;
+  $("#act").onclick = async () => {
+    const lic = $("#lic").value.trim(), nom = $("#gnom").value.trim();
+    if (!lic || nom.length < 2) { $("#actMsg").innerHTML = `<div class="note bad">Escribe la licencia y el nombre del gimnasio.</div>`; return; }
+    try { const r = await Retos.call("crear_gimnasio", {p_licencia: lic, p_nombre: nom, p_zona: $("#gtz").value});
+      clave = r.clave_admin; lsS(KEY, clave);
+      $("#view").innerHTML = `<div class="stack" style="max-width:620px"><div class="eyebrow">Gimnasio activado</div><h1>Guarda tu clave del panel</h1>
+        <div class="card stack"><span class="code" style="font-size:24px;letter-spacing:.06em;word-break:break-all">${esc(clave)}</span>
+        <p class="small muted">Es la llave para crear retos, ver asistencias y abrir la pantalla de recepción desde otro equipo. Guárdala en un lugar seguro: no se puede recuperar y quien la tenga controla los retos del gimnasio.</p>
+        <div class="row"><button class="btn" id="cp">Copiar clave</button><button class="btn primary" id="go">Ya la guardé, continuar</button></div></div></div>`;
+      $("#cp").onclick = () => navigator.clipboard.writeText(clave).then(() => toast("Clave copiada"), () => toast("Selecciona y copia la clave"));
+      $("#go").onclick = load;
+    } catch (e) { $("#actMsg").innerHTML = `<div class="note bad">${esc(Retos.msg(e))}</div>`; }
+  };
+  $("#ent").onclick = () => { clave = $("#cl").value.trim(); lsS(KEY, clave); load(); };
+}
+function render(){
+  $("#view").innerHTML = `<div class="stack"><div class="row between"><div><div class="eyebrow">Panel del gimnasio</div><h1>${esc(G.nombre)}</h1></div>
+      <button class="btn primary" id="openR">Abrir pantalla de recepción</button></div>
+    <nav class="tabs" aria-label="Secciones">${[["retos","Retos"],["asis","Asistencias"],["ajustes","Ajustes"]].map(([k, l]) => `<button data-t="${k}" aria-current="${tab === k ? "page" : "false"}">${l}</button>`).join("")}</nav>
+    <div id="body"></div></div>`;
+  document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { tab = b.dataset.t; render(); });
+  $("#openR").onclick = openRecep;
+  ({retos: renderRetos, asis: renderAsis, ajustes: renderAjustes})[tab]();
+}
+async function renderRetos(){
+  const b = $("#body"); b.innerHTML = `<p class="muted">Cargando…</p>`;
+  let rs; try { rs = await Retos.call("retos_gimnasio", {p_clave: clave}); } catch (e) { b.innerHTML = `<div class="note bad">${esc(Retos.msg(e))}</div>`; return; }
+  const hoy = hoyISO(), act = rs.filter(r => r.activo && r.fin >= hoy);
+  b.innerHTML = `<div class="stack">
+    <div class="kpis"><div class="kpi"><div class="v">${act.length}</div><div class="l">Retos activos</div></div><div class="kpi"><div class="v">${G.miembros}</div><div class="l">Afiliados en retos (cupo ${G.cupo})</div></div><div class="kpi"><div class="v">${act.reduce((a, r) => a + r.cumplieron, 0)}</div><div class="l">Ya cumplieron la meta</div></div></div>
+    <div class="row between"><h2>Retos</h2><button class="btn acc" id="nuevo">Crear reto</button></div>
+    ${rs.length ? `<div class="grid2">${rs.map(r => { const on = r.activo && r.fin >= hoy;
+      return `<article class="card stack" style="gap:10px"><div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h3 style="min-width:0">${esc(r.titulo)}</h3><span class="chip ${on ? "good" : ""}">${on ? (r.inicio > hoy ? "Empieza " + fmtD(r.inicio) : "Activo") : "Terminado"}</span></div>
+        <div class="small muted">${fmtD(r.inicio)} – ${fmtD(r.fin)} · meta ${r.meta} asistencias${r.geocerca ? " · con ubicación" : ""}</div>
+        ${r.premio ? `<div class="small"><b>Premio:</b> ${esc(r.premio)}</div>` : ""}
+        <div><div class="eyebrow">Código para unirse</div><div class="code">${esc(r.codigo)}</div></div>
+        <div class="small">${r.inscritos} inscritos · <b>${r.cumplieron}</b> cumplieron la meta</div>
+        <div class="row"><button class="btn small" data-tabla="${r.id}">Tabla de posiciones</button>${on ? `<button class="btn small" data-cartel="${r.id}">Cartel para unirse</button><button class="btn small ghost" data-cerrar="${r.id}">Terminar reto</button>` : ""}</div></article>`; }).join("")}</div>`
+      : `<div class="card stack"><p>Aún no tienes retos. Un buen primer reto: <b>12 asistencias en un mes</b>, con un premio sencillo como una semana gratis o una sesión con entrenador.</p></div>`}
+    <div class="note small">Los premios se entregan por cumplir la meta de asistencias, no por sorteo. Un sorteo con premios necesita autorización de Coljuegos; los concursos por mérito pueden necesitar permiso de la alcaldía. Revisa las bases con tu asesor legal antes de anunciar premios.</div></div>`;
+  $("#nuevo").onclick = () => nuevoReto();
+  b.querySelectorAll("[data-tabla]").forEach(x => x.onclick = () => tabla(rs.find(r => r.id === x.dataset.tabla)));
+  b.querySelectorAll("[data-cartel]").forEach(x => x.onclick = () => cartel(rs.find(r => r.id === x.dataset.cartel)));
+  b.querySelectorAll("[data-cerrar]").forEach(x => x.onclick = () => sheet(`<h2>¿Terminar este reto?</h2><p>Nadie más podrá unirse y deja de aparecer como activo. Las asistencias registradas se conservan.</p><div class="row"><button class="btn" data-close>Cancelar</button><button class="btn acc" id="ok">Terminar reto</button></div>`,
+    el => el.querySelector("#ok").onclick = async () => { await Retos.call("cerrar_reto", {p_clave: clave, p_reto: x.dataset.cerrar}); $("#sheet").innerHTML = ""; renderRetos(); }));
+}
+function nuevoReto(){
+  const hoy = hoyISO();
+  sheet(`<div class="row between"><h2>Crear reto</h2><button class="btn small" data-close>Cerrar</button></div>
+    <label class="field">Nombre del reto<input id="rt" maxlength="80" value="Reto de ${new Date().toLocaleDateString("es-CO", {month: "long"})}"></label>
+    <div class="grid2"><label class="field">Empieza<input type="date" id="ri" value="${hoy}"></label><label class="field">Termina<input type="date" id="rf" value="${addD(hoy, 29)}"></label></div>
+    <label class="field">Meta: asistencias para cumplir<input type="number" id="rm" min="1" max="200" value="12"><span class="small muted" style="font-weight:400">Se cuenta máximo una asistencia por día y por persona.</span></label>
+    <label class="field">Premio para quien cumpla la meta<input id="rp" maxlength="140" placeholder="Ej.: una semana gratis o una sesión con entrenador"></label>
+    <label class="field">Reglas (opcional)<textarea id="rr" maxlength="600" placeholder="Ej.: la asistencia se registra escaneando el código de la recepción al llegar."></textarea></label>
+    <label class="check"><input type="checkbox" id="rg" ${G.lat == null ? "disabled" : ""}><span><b>Exigir ubicación</b> (más control)<br><span class="small muted">${G.lat == null ? "Primero guarda la ubicación del gimnasio en Ajustes." : `Además del código, el celular debe estar a menos de ${G.radio} m del gimnasio.`}</span></span></label>
+    <div id="rmsg"></div><button class="btn primary" id="crear">Crear reto</button>`, el => {
+    el.querySelector("#crear").onclick = async () => {
+      const t = el.querySelector("#rt").value.trim(), i = el.querySelector("#ri").value, f = el.querySelector("#rf").value, m = +el.querySelector("#rm").value;
+      const err = t.length < 3 ? "Escribe el nombre del reto." : !i || !f || f < i ? "Revisa las fechas: el final debe ser después del inicio." : !(m >= 1 && m <= 200) ? "La meta debe estar entre 1 y 200 asistencias." : "";
+      if (err) { el.querySelector("#rmsg").innerHTML = `<div class="note bad">${err}</div>`; return; }
+      try { const r = await Retos.call("crear_reto", {p_clave: clave, p_titulo: t, p_meta: m, p_inicio: i, p_fin: f, p_premio: el.querySelector("#rp").value, p_reglas: el.querySelector("#rr").value, p_geocerca: el.querySelector("#rg").checked});
+        $("#sheet").innerHTML = ""; toast(`Reto creado. Código para unirse: ${r.codigo}`); renderRetos(); }
+      catch (e) { el.querySelector("#rmsg").innerHTML = `<div class="note bad">${esc(Retos.msg(e))}</div>`; }
+    };
+  });
+}
+async function tabla(r){
+  let xs; try { xs = await Retos.call("tabla_reto_admin", {p_clave: clave, p_reto: r.id}); } catch (e) { toast(Retos.msg(e)); return; }
+  const csv = "puesto,alias,asistencias,cumplio\n" + xs.map((x, i) => `${i + 1},"${x.alias.replace(/"/g, "'")}",${x.asistencias},${x.asistencias >= r.meta ? "si" : "no"}`).join("\n");
+  sheet(`<div class="row between"><div><div class="eyebrow">Tabla de posiciones</div><h2>${esc(r.titulo)}</h2></div><button class="btn small" data-close>Cerrar</button></div>
+    <p class="small muted">Meta: ${r.meta} asistencias entre el ${fmtD(r.inicio)} y el ${fmtD(r.fin)}. Las asistencias anuladas no cuentan.</p>
+    ${xs.length ? `<div class="tbl"><table><thead><tr><th class="num">#</th><th>Participante</th><th class="num">Asistencias</th><th style="min-width:120px">Avance</th><th></th></tr></thead><tbody>${xs.map((x, i) => `<tr><td class="num">${i + 1}</td><td>${esc(x.alias)}</td><td class="num">${x.asistencias}</td><td><div class="bar"><i style="width:${Math.min(100, x.asistencias / r.meta * 100)}%"></i></div></td><td>${x.asistencias >= r.meta ? `<span class="chip good">Cumplió</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      : `<p>Todavía no hay inscritos. Comparte el código <b>${esc(r.codigo)}</b> o muestra el cartel en la recepción.</p>`}
+    ${xs.length ? `<button class="btn" id="csv" style="align-self:flex-start">Copiar tabla (para Excel)</button>` : ""}`, el => {
+    const c = el.querySelector("#csv"); c && (c.onclick = () => navigator.clipboard.writeText(csv).then(() => toast("Tabla copiada"), () => toast("No se pudo copiar")));
+  });
+}
+function qrSVG(text){ const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createSvgTag({cellSize: 8, margin: 2, scalable: true}); }
+function cartel(r){
+  sheet(`<div class="row between"><h2>Cartel para unirse</h2><button class="btn small" data-close>Cerrar</button></div>
+    <div class="card stack" style="align-items:center;text-align:center"><div class="eyebrow">${esc(G.nombre)}</div><h1>${esc(r.titulo)}</h1>
+      ${r.premio ? `<p><b>Premio:</b> ${esc(r.premio)}</p>` : ""}<p>Cumple <b>${r.meta} asistencias</b> entre el ${fmtD(r.inicio)} y el ${fmtD(r.fin)}.</p>
+      <div style="width:min(260px,70vw);background:#fff;border-radius:12px;padding:10px">${qrSVG("GYMNOS-RETO|" + r.codigo)}</div>
+      <div class="code">${esc(r.codigo)}</div><p class="small muted">En Gymnós: Hoy › Retos › Unirme. Escanea el QR o escribe el código.</p></div>
+    <p class="small muted">Puedes tomarle una captura y publicarla en tus redes o imprimirla para la recepción.</p>`);
+}
+async function renderAsis(){
+  const b = $("#body"); b.innerHTML = `<p class="muted">Cargando…</p>`;
+  let xs; try { xs = await Retos.call("asistencias_gimnasio", {p_clave: clave}); } catch (e) { b.innerHTML = `<div class="note bad">${esc(Retos.msg(e))}</div>`; return; }
+  const hoy = hoyISO(), wk = addD(hoy, -6), val = xs.filter(x => !x.anulada);
+  b.innerHTML = `<div class="stack"><div class="kpis"><div class="kpi"><div class="v">${val.filter(x => x.dia === hoy).length}</div><div class="l">Hoy</div></div><div class="kpi"><div class="v">${val.filter(x => x.dia >= wk).length}</div><div class="l">Últimos 7 días</div></div><div class="kpi"><div class="v">${xs.filter(x => x.anulada).length}</div><div class="l">Anuladas</div></div></div>
+    <p class="small muted">Cada asistencia se registró con el código de la recepción en su momento. Si alguna te parece dudosa (por ejemplo, alguien que no viste en el gimnasio), compárala con tu control de acceso y anúlala: deja de contar para los retos.</p>
+    ${xs.length ? `<div class="tbl"><table><thead><tr><th>Participante</th><th>Día</th><th>Hora</th><th class="num">Distancia</th><th></th></tr></thead><tbody>${xs.map(x => `<tr class="${x.anulada ? "off" : ""}"><td>${esc(x.alias)}</td><td>${fmtD(x.dia)}</td><td>${fmtH(x.hora)}</td><td class="num">${x.distancia_m != null ? x.distancia_m + " m" : "—"}</td><td>${x.anulada ? `<button class="btn small ghost" data-re="${x.id}" title="${esc(x.motivo || "")}">Reactivar</button>` : `<button class="btn small ghost" data-an="${x.id}">Anular</button>`}</td></tr>`).join("")}</tbody></table></div>` : `<p>Aún no hay asistencias registradas.</p>`}</div>`;
+  b.querySelectorAll("[data-an]").forEach(x => x.onclick = () => sheet(`<h2>Anular asistencia</h2><label class="field">Motivo (solo lo ves tú)<input id="mo" maxlength="120" placeholder="Ej.: no ingresó por el torniquete"></label><div class="row"><button class="btn" data-close>Cancelar</button><button class="btn acc" id="ok">Anular</button></div>`,
+    el => el.querySelector("#ok").onclick = async () => { await Retos.call("anular_asistencia", {p_clave: clave, p_id: +x.dataset.an, p_motivo: el.querySelector("#mo").value, p_anular: true}); $("#sheet").innerHTML = ""; renderAsis(); }));
+  b.querySelectorAll("[data-re]").forEach(x => x.onclick = async () => { await Retos.call("anular_asistencia", {p_clave: clave, p_id: +x.dataset.re, p_anular: false}); renderAsis(); });
+}
+function renderAjustes(){
+  $("#body").innerHTML = `<div class="stack" style="max-width:640px">
+    <div class="card stack"><h3>Ubicación del gimnasio</h3>
+      <p class="small muted">Sirve para los retos que exigen ubicación: la asistencia solo cuenta si el celular está cerca. Guárdala estando dentro del gimnasio.</p>
+      <p>${G.lat != null ? `Guardada · radio de <b>${G.radio} m</b>` : "Sin guardar"}</p>
+      <label class="field">Radio permitido<select id="rad">${[100,150,200,300,500].map(v => `<option ${v === G.radio ? "selected" : ""} value="${v}">${v} m</option>`).join("")}</select></label>
+      <button class="btn acc" id="geo" style="align-self:flex-start">Estoy en el gimnasio: usar mi ubicación</button><div id="gmsg" class="small"></div></div>
+    <div class="card stack"><h3>Plan</h3><p>${G.miembros} de ${G.cupo} afiliados inscritos en retos.</p></div>
+    <div class="card stack"><h3>Sesión del panel</h3><p class="small muted">Para usar el panel en otro equipo, entra con la misma clave.</p><button class="btn ghost" id="out" style="align-self:flex-start">Cerrar sesión en este equipo</button></div></div>`;
+  $("#geo").onclick = () => {
+    if (!navigator.geolocation) { $("#gmsg").textContent = "Este equipo no puede dar su ubicación."; return; }
+    $("#gmsg").textContent = "Buscando tu ubicación…";
+    navigator.geolocation.getCurrentPosition(async p => { await Retos.call("ubicar_gimnasio", {p_clave: clave, p_lat: p.coords.latitude, p_lng: p.coords.longitude, p_radio: +$("#rad").value}); toast("Ubicación guardada"); await load(); tab = "ajustes"; render(); },
+      () => { $("#gmsg").textContent = "No pudimos obtener la ubicación. Revisa los permisos de ubicación del navegador."; }, {enableHighAccuracy: true, timeout: 15000});
+  };
+  $("#out").onclick = () => { clave = null; lsS(KEY, null); renderStart(); };
+}
+/* ---------- Pantalla de recepción: QR y código que cambian cada 30 s ---------- */
+let rT = 0, rV = -1, wake = null;
+async function openRecep(){
+  try { G = await Retos.call("datos_gimnasio", {p_clave: clave}); offset = G.ahora_ms - Date.now(); } catch (e) { toast(Retos.msg(e)); return; }
+  const R = $("#recep"); R.hidden = false; rV = -1;
+  R.innerHTML = `<button class="btn small x" id="rx">Salir</button><div class="eyebrow" style="color:#fff;opacity:.8">${esc(G.nombre)}</div><h1>Registra tu asistencia</h1>
+    <div class="qr" id="rqr" aria-label="Código QR de asistencia"></div><div class="big" id="rcod" aria-live="polite">------</div><div class="tbar"><i id="rbar"></i></div>
+    <p class="how">Abre Gymnós › Hoy › <b>Registrar asistencia</b> y escanea el código. Si la cámara no funciona, escribe los 6 números. Cambian cada 30 segundos.</p>`;
+  $("#rx").onclick = closeRecep;
+  try { await R.requestFullscreen?.(); } catch (e) {}
+  try { wake = await navigator.wakeLock?.request("screen"); } catch (e) {}
+  clearInterval(rT); rT = setInterval(tick, 250); tick();
+}
+async function tick(){
+  const now = Date.now() + offset, v = Math.floor(now / 30000), left = 30 - (now / 1000) % 30;
+  const bar = $("#rbar"); if (bar) bar.style.width = (left / 30 * 100) + "%";
+  if (v !== rV) { rV = v; const c = await Retos.codigo(G.secreto, v); $("#rqr").innerHTML = qrSVG(Retos.qrTexto(G.id, c)); $("#rcod").textContent = c.slice(0, 3) + " " + c.slice(3); }
+}
+function closeRecep(){ clearInterval(rT); $("#recep").hidden = true; $("#recep").innerHTML = ""; try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} try { wake && wake.release(); } catch (e) {} wake = null; }
+document.addEventListener("visibilitychange", async () => { if (!$("#recep").hidden && document.visibilityState === "visible") { try { wake = await navigator.wakeLock?.request("screen"); } catch (e) {} } });
+load();
+</script></body></html>
