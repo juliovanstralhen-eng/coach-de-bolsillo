@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-title" content="Gymnós">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<script>window.PWA_MODE = true; window.APP_VERSION = "7.6";</script>
+<script>window.PWA_MODE = true; window.APP_VERSION = "7.7";</script>
 <title>Gymnós</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -196,6 +196,9 @@ input[type=time],input[type=date]{min-width:0;max-width:100%;-webkit-appearance:
 .sets .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .sets input{min-height:40px;padding:6px 8px;text-align:center;font-variant-numeric:tabular-nums}
 .setn{font-family:var(--display);font-size:18px;color:var(--muted);text-align:center}
+button.setn{background:none;border:0;cursor:pointer;padding:0;min-height:40px;text-decoration:underline dotted;text-underline-offset:4px;font-family:var(--display)}button.setn.multi{color:var(--accent);font-weight:700}
+.segs{display:grid;grid-template-columns:minmax(0,1.3fr) 72px minmax(0,1fr) 40px;gap:6px;align-items:end}.segs .h{font-size:12px;color:var(--muted);font-weight:600}
+.multiline{font-size:13px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border-radius:8px;padding:6px 10px}
 .done{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center}
 .done[aria-pressed="true"]{background:var(--good);border-color:var(--good);color:var(--surface)}
 .done svg{width:18px;height:18px}
@@ -2689,7 +2692,7 @@ function shareReport(){
   if (mw.length > 1) L.push(`Peso: ${fmt(mw[0].w)} kg (${mw[0].date}) → ${fmt(mw.at(-1).w)} kg (${mw.at(-1).date}).`); else if (mw.length) L.push(`Peso: ${fmt(mw[0].w)} kg.`);
   if (mc.length > 1) L.push(`Cintura: ${fmt(mc[0].waist)} cm → ${fmt(mc.at(-1).waist)} cm.`);
   const seen = new Set(), last = [];
-  for (const s of [...S.logs].reverse()) { for (const e of s.entries) { if (seen.has(e.id) || !EXI[e.id] || !e.sets.length) continue; seen.add(e.id); last.push(`- ${EXI[e.id].n}: ${e.sets.map(x => (x.kg != null ? fmt(x.kg) + " kg × " : "") + x.reps).join(", ")} (${s.date})`); } if (last.length >= 10) break; }
+  for (const s of [...S.logs].reverse()) { for (const e of s.entries) { if (seen.has(e.id) || !EXI[e.id] || !e.sets.length) continue; seen.add(e.id); last.push(`- ${EXI[e.id].n}: ${e.sets.map(x => x.drops && x.drops.length ? "[" + setTxt(x) + "]" : (x.lb != null ? fmt(x.lb) + " lb × " : x.kg != null ? fmt(x.kg) + " kg × " : "") + x.reps).join(", ")} (${s.date})`); } if (last.length >= 10) break; }
   if (last.length) { L.push("", "Última vez en cada ejercicio (kg × repeticiones):", ...last.slice(0, 10)); }
   const pains = (S.pain || []).filter(x => Date.parse(x.date) > since);
   if (pains.length) L.push("", `Molestias reportadas en el último mes: ${pains.map(x => (EXI[x.id]?.n || x.id) + (x.zone ? " (" + x.zone + ")" : "")).join(", ")}.`);
@@ -2828,6 +2831,46 @@ async function openRetoTabla(id){
       sh.querySelector("#rtNo").onclick = () => { closeSheet(); openRetoTabla(id); };
       sh.querySelector("#rtYes").onclick = async () => { try { await Retos.call("salir_reto", {p_reto: id}); await retRefresh(true); closeSheet(); toast("Saliste del reto"); if (tab === "hoy") renderHoy(); } catch (e) { toast(Retos.msg(e)); } }; };
   });
+}
+/* ============ Series con varios pesos: descendentes (drop set), ascendentes o rest-pause ============ */
+const LB = 0.45359237, toKg = lb => Math.round(lb * LB * 100) / 100;
+const segTxt = x => x.lb != null ? `${fmt(+x.lb)} lb` : x.kg != null && x.kg !== "" ? `${fmt(+x.kg)} kg` : "peso corporal";
+const setTxt = st => [{kg: st.kg, lb: st.lb, reps: st.reps}, ...(st.drops || [])].map(x => `${segTxt(x)} × ${+x.reps || 0}`).join(" → ");
+const setTon = (x, base = 0) => ((+x.kg || base) * (+x.reps || 0)) + (x.drops || []).reduce((a, d) => a + (+d.kg || base) * (+d.reps || 0), 0);
+function openSetEditor(st, o){
+  const segs = [{kg: st.kg, lb: st.lb, reps: st.reps}, ...(st.drops || []).map(d => ({...d}))].map(x => ({u: x.lb != null ? "lb" : "kg", w: x.lb != null ? x.lb : (x.kg ?? ""), reps: x.reps || ""}));
+  if (segs.length === 1) segs.push({u: segs[0].u, w: "", reps: ""});
+  let rir = st.rir === "" || st.rir == null ? null : +st.rir;
+  const draw = () => openSheet(`<div class="grab"><div><div class="eyebrow">${esc(o.title)}</div><h2>Serie con varios pesos</h2></div><button class="btn small" data-close>Cerrar</button></div>
+    <div class="stack"><p class="small muted">Anota cada peso que usaste dentro de esta misma serie, en orden: series descendentes (bajas el peso sin descansar), ascendentes o rest-pause. Puedes anotar en kilos o en libras.</p>
+      <div class="segs"><span class="h">Peso</span><span class="h">Unidad</span><span class="h">Reps</span><span></span>
+      ${segs.map((x, i) => `<input type="number" inputmode="decimal" step="0.25" min="0" data-sw="${i}" value="${esc(x.w)}" aria-label="Peso ${i + 1}" placeholder="${i ? "menos peso" : "inicial"}">
+        <select data-su="${i}" aria-label="Unidad del peso ${i + 1}"><option value="kg" ${x.u === "kg" ? "selected" : ""}>kg</option><option value="lb" ${x.u === "lb" ? "selected" : ""}>lb</option></select>
+        <input type="number" inputmode="numeric" min="1" data-sr="${i}" value="${esc(x.reps)}" aria-label="Repeticiones con el peso ${i + 1}">
+        ${i ? `<button class="btn small ghost" data-sx="${i}" aria-label="Quitar el peso ${i + 1}" style="padding:0;min-width:40px">×</button>` : "<span></span>"}`).join("")}</div>
+      <button class="btn small" id="segAdd" style="align-self:flex-start">+ Otro cambio de peso</button>
+      ${o.rir ? `<div class="stack" style="gap:6px"><span class="small" style="font-weight:600">¿Cuántas más podías hacer con el peso inicial? <span class="muted" style="font-weight:400">(opcional)</span></span>
+        <div class="opts">${[0,1,2,3,4].map(v => `<label class="opt"><input type="radio" name="segRir" value="${v}" ${rir === v ? "checked" : ""}><span>${v === 4 ? "4+" : v}</span></label>`).join("")}</div></div>` : ""}
+      <div id="segMsg"></div>
+      <button class="btn primary block" id="segOk">${o.okLabel || "Guardar serie"}</button>
+      ${st.drops && st.drops.length ? `<button class="btn ghost block" id="segPlain">Dejarla como serie normal</button>` : ""}</div>`, sh => {
+    const read = () => { sh.querySelectorAll("[data-sw]").forEach(i => segs[+i.dataset.sw].w = i.value); sh.querySelectorAll("[data-su]").forEach(i => segs[+i.dataset.su].u = i.value); sh.querySelectorAll("[data-sr]").forEach(i => segs[+i.dataset.sr].reps = i.value); const r = sh.querySelector("input[name=segRir]:checked"); rir = r ? +r.value : null; };
+    sh.querySelectorAll("[data-su]").forEach(sel => sel.onchange = () => { read(); const i = +sel.dataset.su; for (let k = i + 1; k < segs.length; k++) if (segs[k].w === "") segs[k].u = segs[i].u; draw(); });
+    sh.querySelector("#segAdd").onclick = () => { read(); segs.push({u: segs.at(-1).u, w: "", reps: ""}); draw(); };
+    sh.querySelectorAll("[data-sx]").forEach(b => b.onclick = () => { read(); segs.splice(+b.dataset.sx, 1); draw(); });
+    const pl = sh.querySelector("#segPlain"); pl && (pl.onclick = () => { delete st.drops; o.onSave(st); });
+    sh.querySelector("#segOk").onclick = () => {
+      read(); const used = segs.filter((x, i) => i === 0 || x.w !== "" || x.reps !== "");
+      const bad = used.findIndex(x => !(+x.reps >= 1)), neg = used.some(x => x.w !== "" && !(+x.w >= 0));
+      if (bad >= 0 || neg) { sh.querySelector("#segMsg").innerHTML = `<div class="note bad small">${neg ? "Revisa los pesos." : `Escribe las repeticiones del peso ${bad + 1}.`}</div>`; return; }
+      const conv = x => x.w === "" ? {kg: null} : x.u === "lb" ? {kg: toKg(+x.w), lb: +x.w} : {kg: +x.w};
+      const f = conv(used[0]); st.kg = f.kg ?? ""; if (f.lb != null) st.lb = f.lb; else delete st.lb; st.reps = +used[0].reps;
+      if (o.rir) st.rir = rir ?? "";
+      const dr = used.slice(1).map(x => ({...conv(x), reps: +x.reps})); if (dr.length) st.drops = dr; else delete st.drops;
+      o.onSave(st);
+    };
+  });
+  draw();
 }
 const toMin = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 function twiceGap(t1, t2){
@@ -2990,14 +3033,15 @@ function exCard(ex, i, ps, day){
     ${wu ? `<p class="small">Calentamiento: ${wu.map(([k, r]) => `${fmt(k)} kg × ${r}`).join(" y ")}.</p>` : ""}
     ${d.skip ? `<p class="note small">Saltado hoy.</p>` : ""}
     <div class="sets" role="group" aria-label="Series de ${esc(ex.n)}">
-      <span class="h">Serie</span><span class="h">${kg ? (ex.assist ? "Asist. kg" : "Kg") : "–"}</span><span class="h">${uLab}</span><span class="h">${rx.unit === "reps" ? term("rir", "RIR") : "–"}</span><span></span>
-      ${d.sets.slice(0, rx.sets).map((s, j) => `<span class="setn">${j + 1}</span>
+      <span class="h" title="Serie">#</span><span class="h">${kg ? (ex.assist ? "Asist. kg" : "Kg") : "–"}</span><span class="h">${uLab}</span><span class="h">${rx.unit === "reps" ? term("rir", "RIR") : "–"}</span><span></span>
+      ${d.sets.slice(0, rx.sets).map((s, j) => `<button class="setn ${s.drops && s.drops.length ? "multi" : ""}" data-multi="${j}" aria-label="Serie ${j + 1}: anotar varios pesos">${j + 1}${s.drops && s.drops.length ? "+" : ""}</button>
         <input type="number" inputmode="decimal" step="0.25" id="${ex.id}-kg-${j}" aria-label="Kilos serie ${j + 1}" value="${esc(s.kg)}" ${kg ? "" : "disabled placeholder='–'"} data-f="kg" data-j="${j}">
         <input type="number" inputmode="numeric" id="${ex.id}-r-${j}" aria-label="${uLab} serie ${j + 1}" value="${esc(s.reps)}" placeholder="${rx.hi}" data-f="reps" data-j="${j}">
         <input type="number" inputmode="numeric" id="${ex.id}-rir-${j}" aria-label="RIR serie ${j + 1}" value="${esc(s.rir)}" placeholder="${rx.rir ?? "–"}" data-f="rir" data-j="${j}" min="0" max="6" ${rx.unit === "reps" ? "" : "disabled"}>
         <button class="done" aria-pressed="${s.ok}" aria-label="Marcar serie ${j + 1} como hecha" data-ok="${j}">${ICON_CHECK}</button>`).join("")}
     </div>
-    <div class="row">${(draft.added || []).includes(ex.id) ? `<button class="btn small ghost" data-unadd="${ex.id}">Quitar de hoy</button>` : ""}${alts.length ? `<button class="btn small ghost" data-swap="${ex.id}">Cambiar ejercicio</button>` : ""}<button class="btn small ghost" data-feel="${ex.id}">¿Lo sientes en otro lado?</button>${busyParts(ex).length ? `<button class="btn small ghost" data-busy="${ex.id}">Máquina ocupada</button>` : ""}<button class="btn small ghost" data-pain="${ex.id}">Sentí dolor</button>
+    ${d.sets.slice(0, rx.sets).map((s, j) => s.drops && s.drops.length ? `<div class="multiline"><span><b>Serie ${j + 1}:</b> ${esc(setTxt(s))}</span><button class="btn small ghost" data-multi="${j}">Editar</button></div>` : "").join("")}
+    <div class="row">${kg && rx.unit === "reps" ? `<button class="btn small ghost" data-multi="next">Serie con varios pesos</button>` : ""}${(draft.added || []).includes(ex.id) ? `<button class="btn small ghost" data-unadd="${ex.id}">Quitar de hoy</button>` : ""}${alts.length ? `<button class="btn small ghost" data-swap="${ex.id}">Cambiar ejercicio</button>` : ""}<button class="btn small ghost" data-feel="${ex.id}">¿Lo sientes en otro lado?</button>${busyParts(ex).length ? `<button class="btn small ghost" data-busy="${ex.id}">Máquina ocupada</button>` : ""}<button class="btn small ghost" data-pain="${ex.id}">Sentí dolor</button>
       ${kg ? `<label class="small row" style="gap:6px;flex-wrap:nowrap">Salto de peso <select data-step="${ex.id}" style="min-height:34px;width:auto;padding:4px 8px">${[0.5,1,1.25,2,2.5,5,10].map(v => `<option value="${v}" ${stepFor(ex) == v ? "selected" : ""}>${fmt(v, 2)} kg</option>`).join("")}</select></label>` : ""}</div>
     <div class="swapbox" hidden></div><div class="feelbox stack" hidden></div>
   </article>`;
@@ -3020,7 +3064,7 @@ function bindHoy(items, ps, day){
   v.querySelectorAll(".ex").forEach(card => {
     const id = card.dataset.ex, ex = EXI[id], rx = rxFor(ex, S.profile, ps.week, true), d = draft.ex[id];
     card.querySelectorAll("input[data-f]").forEach(inp => inp.addEventListener("input", () => {
-      const j = +inp.dataset.j, f = inp.dataset.f; d.sets[j][f] = inp.value; d.quick = true; if (f === "kg") d.touched = true;
+      const j = +inp.dataset.j, f = inp.dataset.f; d.sets[j][f] = inp.value; d.quick = true; if (f === "kg") { d.touched = true; delete d.sets[j].lb; }
       if (f === "kg") for (let k = j + 1; k < rx.sets; k++) { const n = card.querySelector(`#${CSS.escape(id)}-kg-${k}`); if (n && !d.sets[k].ok) { n.value = inp.value; d.sets[k].kg = inp.value; } }
       saveDraft();
     }));
@@ -3029,6 +3073,11 @@ function bindHoy(items, ps, day){
       if (!st.reps && r) { st.reps = r.placeholder; r.value = st.reps; }
       st.ok = !st.ok; d.quick = true; b.setAttribute("aria-pressed", st.ok); saveDraft(); updateProgress();
       if (st.ok && rx.rest) startRest(rx.rest);
+    }));
+    card.querySelectorAll("[data-multi]").forEach(b => b.addEventListener("click", () => {
+      const n = Math.min(rx.sets, d.sets.length), j = b.dataset.multi === "next" ? Math.max(0, d.sets.slice(0, n).findIndex(x => !x.ok)) : +b.dataset.multi, st = d.sets[j];
+      if (!st.reps) st.reps = "";
+      openSetEditor(st, {title: `${ex.n} · serie ${j + 1}`, rir: rx.unit === "reps", okLabel: "Guardar y marcar como hecha", onSave: () => { st.ok = true; d.quick = true; d.touched = true; saveDraft(); closeSheet(); const y = scrollY; renderHoy(); scrollTo(0, y); toast(`Serie ${j + 1}: ${setTxt(st)}`); if (rx.rest) startRest(rx.rest); }});
     }));
     const sel = card.querySelector("[data-step]"); sel && sel.addEventListener("change", () => { (S.stepSz = S.stepSz || {})[id] = +sel.value; save(); renderHoy(); });
     card.querySelector("[data-pain]").addEventListener("click", () => openPain(id, () => renderHoy()));
@@ -3052,7 +3101,7 @@ function finishSession(items, ps){
   const num = v => v === "" || v == null ? null : +v;
   const extra = Object.keys(draft.ex || {}).filter(id => EXI[id] && !items.some(e => e.id === id) && draft.ex[id].sets.some(x => x.ok)).map(id => EXI[id]);
   items = [...extra, ...items];
-  const entries = items.filter(ex => !(draft.ex[ex.id] && draft.ex[ex.id].skip)).map(ex => ({id: ex.id, sets: (draft.ex[ex.id]?.sets || []).filter(s => s.ok).map(s => ({kg: num(s.kg), reps: +s.reps || 0, rir: num(s.rir)}))})).filter(e => e.sets.length);
+  const entries = items.filter(ex => !(draft.ex[ex.id] && draft.ex[ex.id].skip)).map(ex => ({id: ex.id, sets: (draft.ex[ex.id]?.sets || []).filter(s => s.ok).map(s => ({kg: num(s.kg), reps: +s.reps || 0, rir: num(s.rir), ...(s.lb != null ? {lb: +s.lb} : {}), ...(s.drops && s.drops.length ? {drops: s.drops.map(x => ({kg: num(x.kg), reps: +x.reps || 0, ...(x.lb != null ? {lb: +x.lb} : {})}))} : {})}))})).filter(e => e.sets.length);
   if (!entries.length) {
     openSheet(`<div class="grab"><h2>Sin series registradas</h2><button class="btn small" data-close>Cerrar</button></div><p class="muted" style="margin-bottom:14px">Marca con ✓ las series que hiciste para que el coach calcule tu próxima carga. Si hoy no entrenaste, puedes saltar esta sesión.</p><div class="row"><button class="btn" data-close>Volver</button><button class="btn primary" id="skipS">Saltar sesión</button></div>`, sh => sh.querySelector("#skipS").addEventListener("click", () => { S.done++; save(); closeSheet(); renderHoy(); }));
     return;
@@ -3068,7 +3117,7 @@ function finishSession(items, ps){
   const s = {ts: Date.now(), date: todayISO(), day: ps.plan[ps.dayIdx].name, ...(ps.plan[ps.dayIdx].part ? {part: ps.plan[ps.dayIdx].part} : {}), week: ps.week, entries, checkin: draft.checkin || null, min: draft.t0 ? Math.max(1, Math.round((Date.now() - draft.t0) / 60000)) : null};
   S.logs.push(s); S.done++; save(); Cloud.pushSession(s);
   draft = {}; saveDraft(); stopRest();
-  const total = entries.reduce((a, e) => a + e.sets.length, 0), tonnage = entries.reduce((a, e) => a + e.sets.reduce((b, x) => b + (x.kg || 0) * x.reps, 0), 0), nx = planState();
+  const total = entries.reduce((a, e) => a + e.sets.length, 0), tonnage = entries.reduce((a, e) => a + e.sets.reduce((b, x) => b + setTon(x), 0), 0), nx = planState();
   openSheet(`<div class="grab"><div><div class="eyebrow">Sesión guardada</div><h2>${prs.length ? "¡Nuevos récords!" : "Sesión completada"}</h2></div><button class="btn small" data-close>Cerrar</button></div>
     <div class="kpis" style="margin-bottom:14px"><div class="kpi"><div class="v">${total}</div><div class="l">Series</div></div><div class="kpi"><div class="v">${fmt(tonnage, 0)}</div><div class="l">Kg movidos</div></div><div class="kpi"><div class="v">${s.min ?? entries.length}</div><div class="l">${s.min != null ? "Minutos" : "Ejercicios"}</div></div></div>
     ${prs.length ? `<div class="stack" style="gap:8px;margin-bottom:14px">${prs.map(([n, v]) => `<div class="pr"><span>${esc(n)}</span><b>${esc(v)}</b></div>`).join("")}</div>` : ""}
@@ -3520,7 +3569,7 @@ function weeklySummary(){
   const pk = prev.toISOString().slice(0, 10), inW = d => weekStart(d + "T00:00:00Z") === pk;
   const ses = S.logs.filter(s => inW(s.date)); if (!ses.length) return null;
   const sets = ses.reduce((a, s) => a + s.entries.reduce((b, e) => b + e.sets.length, 0), 0), better = [], stall = [];
-  const score = en => en.sets.reduce((a, x) => a + (x.kg || 1) * x.reps, 0);
+  const score = en => en.sets.reduce((a, x) => a + setTon(x, 1), 0);
   ses.forEach(s => s.entries.forEach(e => { const ex = EXI[e.id]; if (!ex || ["cardio","pf","bal"].includes(ex.pat) || better.includes(ex.n) || stall.includes(ex.n)) return; const pe = S.logs.filter(x => x.ts < s.ts).flatMap(x => x.entries.filter(y => y.id === e.id)).at(-1); if (!pe) return; if (score(e) > score(pe) * 1.01) better.push(ex.n); else stall.push(ex.n); }));
   const ma = movingAvg(S.measures), inMa = ma.filter(x => inW(new Date(x.t).toISOString().slice(0, 10))), before = ma.filter(x => x.t < Date.parse(pk));
   const wChange = inMa.length && before.length ? inMa.at(-1).ma - before.at(-1).ma : null;
@@ -3583,20 +3632,23 @@ function removeFromToday(id){ draft.added = (draft.added || []).filter(x => x !=
 function openSessionEdit(ts, fresh){
   regCustom();
   const isNew = !!fresh, s = fresh || S.logs.find(x => x.ts === ts); if (!s) return;
-  const collect = sh => { sh.querySelectorAll("input[data-e]").forEach(inp => { const x = s.entries[+inp.dataset.e]?.sets[+inp.dataset.s]; if (!x) return; const f = inp.dataset.f, v = inp.value; x[f] = v === "" ? (f === "reps" ? 0 : null) : +v; }); const d = sh.querySelector("#seDate"); if (d && d.value) s.date = d.value; const nm = sh.querySelector("#seName"); if (nm && nm.value.trim()) s.day = nm.value.trim(); };
+  const collect = sh => { sh.querySelectorAll("input[data-e]").forEach(inp => { const x = s.entries[+inp.dataset.e]?.sets[+inp.dataset.s]; if (!x) return; const f = inp.dataset.f, v = inp.value; const nv = v === "" ? (f === "reps" ? 0 : null) : +v; if (f === "kg" && x.lb != null && nv !== x.kg) delete x.lb; x[f] = nv; }); const d = sh.querySelector("#seDate"); if (d && d.value) s.date = d.value; const nm = sh.querySelector("#seName"); if (nm && nm.value.trim()) s.day = nm.value.trim(); };
   const reopen = () => openSessionEdit(s.ts, isNew ? s : null);
   openSheet(`<div class="grab"><div><div class="eyebrow">${isNew ? "Entrenamiento fuera del plan" : esc(s.date)}</div><h2>${esc(s.day)}</h2></div><button class="btn small" data-close>Cerrar</button></div>
     <div class="stack">
       <div class="row" style="gap:8px"><label class="small" style="flex:1;min-width:140px">Fecha<input type="date" id="seDate" value="${esc(s.date)}" max="${todayISO()}"></label>${isNew || s.free ? `<label class="small" style="flex:2;min-width:160px">Nombre<input id="seName" maxlength="40" value="${esc(s.day)}"></label>` : ""}</div>
       ${s.entries.length ? "" : `<p class="muted">Agrega los ejercicios que hiciste y anota tus series.</p>`}
       ${s.entries.map((e, ei) => `<div class="card stack" style="gap:8px"><div class="row between" style="flex-wrap:nowrap;gap:8px"><b>${esc(EXI[e.id]?.n || e.id)}</b><button class="btn small ghost" data-rmx="${ei}" aria-label="Quitar ${esc(EXI[e.id]?.n || "ejercicio")}">Quitar</button></div>
-        <div class="sets" style="grid-template-columns:28px 1fr 1fr 1fr 34px"><span class="h">#</span><span class="h">Kg</span><span class="h">Reps</span><span class="h">RIR</span><span class="h"></span>${e.sets.map((x, si) => `<span class="setn">${si + 1}</span><input type="number" inputmode="decimal" step="0.25" data-e="${ei}" data-s="${si}" data-f="kg" value="${x.kg ?? ""}" aria-label="Kilos serie ${si + 1}"><input type="number" inputmode="numeric" data-e="${ei}" data-s="${si}" data-f="reps" value="${x.reps || ""}" aria-label="Repeticiones serie ${si + 1}"><input type="number" inputmode="numeric" data-e="${ei}" data-s="${si}" data-f="rir" value="${x.rir ?? ""}" aria-label="RIR serie ${si + 1}"><button class="btn small ghost" data-rms="${ei}|${si}" aria-label="Quitar serie ${si + 1}" style="padding:0;min-width:34px">×</button>`).join("")}</div>
-        <button class="btn small" data-adds="${ei}" style="align-self:flex-start">+ Serie</button></div>`).join("")}
+        <div class="sets" style="grid-template-columns:28px 1fr 1fr 1fr 34px"><span class="h">#</span><span class="h">Kg</span><span class="h">Reps</span><span class="h">RIR</span><span class="h"></span>${e.sets.map((x, si) => `<button class="setn ${x.drops && x.drops.length ? "multi" : ""}" data-sm="${ei}|${si}" aria-label="Serie ${si + 1}: anotar varios pesos">${si + 1}${x.drops && x.drops.length ? "+" : ""}</button><input type="number" inputmode="decimal" step="0.25" data-e="${ei}" data-s="${si}" data-f="kg" value="${x.kg ?? ""}" aria-label="Kilos serie ${si + 1}"><input type="number" inputmode="numeric" data-e="${ei}" data-s="${si}" data-f="reps" value="${x.reps || ""}" aria-label="Repeticiones serie ${si + 1}"><input type="number" inputmode="numeric" data-e="${ei}" data-s="${si}" data-f="rir" value="${x.rir ?? ""}" aria-label="RIR serie ${si + 1}"><button class="btn small ghost" data-rms="${ei}|${si}" aria-label="Quitar serie ${si + 1}" style="padding:0;min-width:34px">×</button>`).join("")}</div>
+        ${e.sets.map((x, si) => x.drops && x.drops.length ? `<div class="multiline"><span><b>Serie ${si + 1}:</b> ${esc(setTxt(x))}</span><button class="btn small ghost" data-sm="${ei}|${si}">Editar</button></div>` : "").join("")}
+        <div class="row"><button class="btn small" data-adds="${ei}">+ Serie</button><button class="btn small ghost" data-sm="${ei}|${e.sets.length - 1}">Serie con varios pesos</button></div></div>`).join("")}
       <button class="btn block" id="seAdd">+ Agregar ejercicio</button>
       <button class="btn primary block" id="seSave">${isNew ? "Guardar entrenamiento" : "Guardar cambios"}</button>${isNew ? "" : `<button class="btn block ghost" id="seDel">Borrar esta sesión</button>`}<div id="seConf"></div></div>`, sh => {
     sh.querySelectorAll("[data-rmx]").forEach(b => b.onclick = () => { collect(sh); s.entries.splice(+b.dataset.rmx, 1); reopen(); });
     sh.querySelectorAll("[data-rms]").forEach(b => b.onclick = () => { collect(sh); const [ei, si] = b.dataset.rms.split("|").map(Number); s.entries[ei].sets.splice(si, 1); if (!s.entries[ei].sets.length) s.entries.splice(ei, 1); reopen(); });
-    sh.querySelectorAll("[data-adds]").forEach(b => b.onclick = () => { collect(sh); const e = s.entries[+b.dataset.adds], last = e.sets.at(-1); e.sets.push(last ? {...last} : {kg: null, reps: 0, rir: null}); reopen(); });
+    sh.querySelectorAll("[data-sm]").forEach(b => b.onclick = () => { collect(sh); const [ei, si] = b.dataset.sm.split("|").map(Number), x = s.entries[ei]?.sets[si]; if (!x) return;
+      openSetEditor(x, {title: `${EXI[s.entries[ei].id]?.n || ""} · serie ${si + 1}`, rir: true, onSave: st => { st.kg = st.kg === "" ? null : st.kg; st.rir = st.rir === "" ? null : st.rir; reopen(); }}); });
+    sh.querySelectorAll("[data-adds]").forEach(b => b.onclick = () => { collect(sh); const e = s.entries[+b.dataset.adds], last = e.sets.at(-1); e.sets.push(last ? (({drops, ...r}) => r)(last) : {kg: null, reps: 0, rir: null}); reopen(); });
     sh.querySelector("#seAdd").onclick = () => { collect(sh); openExPicker(id => { const prev = lastEntries(id, 1)[0], ref = prev && prev.sets.at(-1);
         s.entries.push({id, sets: [0, 1, 2].map(() => ref ? {kg: ref.kg, reps: ref.reps, rir: null} : {kg: null, reps: 0, rir: null})}); reopen(); }, {eyebrow: isNew ? "Entrenamiento fuera del plan" : "Agregar a la sesión del " + s.date, back: reopen}); };
     sh.querySelector("#seSave").onclick = () => { collect(sh); s.entries = s.entries.map(e => ({id: e.id, sets: e.sets.filter(x => x.reps > 0 || x.kg)})).filter(e => e.sets.length);
@@ -3922,7 +3974,8 @@ function rirPanel(c){
   return `<div class="card stack">${sd ? `<div class="sidebar"><span class="ok">${sd[0].split(" ")[1]} · ${WP.sideReps[0]}</span><span class="ok">${sd[1].split(" ")[1]} · ${WP.sideReps[1]}</span></div><p class="small muted" style="margin:0">Para tu progreso cuenta el lado más débil. Responde pensando en ese lado.</p>` : ""}<div class="row between" style="flex-wrap:nowrap"><span class="small muted">${sd ? "Repeticiones del lado más débil" : "Repeticiones hechas"}</span><div class="row" style="flex-wrap:nowrap"><button class="rbtn" id="rM" aria-label="Una menos" style="width:42px;height:42px;font-size:20px">−</button><span class="num" id="rN" style="font-size:28px;min-width:40px;text-align:center">${WP.reps}</span><button class="rbtn" id="rP" aria-label="Una más" style="width:42px;height:42px;font-size:20px">+</button></div></div>
     <h3>¿Cuántas repeticiones más podías hacer con buena técnica?</h3><p class="small muted">Es tu ${term("rir", "RIR")}. Sé sincero: con esto el coach decide el peso de la próxima vez.</p>
     ${practice ? `<label class="row small" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="rirChk" style="margin-top:2px"><span><b>Comprobar mi cálculo:</b> después de elegir, sigue hasta no poder más (solo en máquina, con seguridad).</span></label>` : ""}
-    <div class="stack" style="gap:8px">${RIR_OPTS.map(([v, l]) => `<button class="btn" data-rir="${v}" style="justify-content:flex-start;gap:12px"><span class="num" style="font-size:22px;min-width:28px">${v === 4 ? "4+" : v}</span>${l}</button>`).join("")}</div></div>`;
+    <div class="stack" style="gap:8px">${RIR_OPTS.map(([v, l]) => `<button class="btn" data-rir="${v}" style="justify-content:flex-start;gap:12px"><span class="num" style="font-size:22px;min-width:28px">${v === 4 ? "4+" : v}</span>${l}</button>`).join("")}</div>
+    ${c.kg && !WP.calibNow && !sd ? `<button class="btn ghost block" id="wpMulti">¿Cambiaste de peso en esta serie? Anótalo</button>` : ""}</div>`;
 }
 function renderWP(){
   const el = $("#wp"); el.hidden = false; const {done, total} = wpTotals();
@@ -4057,6 +4110,7 @@ function bindWP(){
     };
   } else {
     q("#rM").onclick = () => { WP.reps = Math.max(0, WP.reps - 1); q("#rN").textContent = WP.reps; };
+    if (q("#wpMulti")) q("#wpMulti").onclick = () => { c.st.reps = WP.reps; openSetEditor(c.st, {title: `${c.ex.n} · serie ${WP.j + 1}`, rir: true, okLabel: "Guardar serie y seguir", onSave: () => { c.st.ok = true; c.d.touched = true; saveDraft(); closeSheet(); WP.flash = ""; wpAfterSet(c); }}); };
     q("#rP").onclick = () => { WP.reps++; q("#rN").textContent = WP.reps; };
     el.querySelectorAll("[data-rir]").forEach(b => b.onclick = () => {
       const v = +b.dataset.rir;
